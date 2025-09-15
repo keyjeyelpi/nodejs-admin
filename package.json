@@ -1,9 +1,11 @@
 {
   "type": "module",
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.19",
     "@types/dotenv": "^6.1.1",
     "@types/express": "^5.0.3",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^24.4.0",
     "nodemon": "^3.1.10",
     "ts-node": "^10.9.2",
@@ -11,11 +13,13 @@
     "typescript": "^5.9.2"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.2",
     "body-parser": "^2.2.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.2",
     "express": "^5.1.0",
-    "helmet": "^8.1.0"
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.2"
   },
   "scripts": {
     "dev": "nodemon --watch src --ext ts,json --exec ts-node --esm --experimental-specifier-resolution=node src/index.ts",

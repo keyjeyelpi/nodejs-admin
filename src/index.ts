@@ -33,8 +33,10 @@ import express, {
 } from "express";
 import helmet from "helmet";
 
-import userRoutes from "./routes/user.ts";
 import type { ErrorResponse } from "./interface/error.ts";
+
+import authRoutes from "./routes/auth.ts";
+import userRoutes from "./routes/user.ts";
 
 dotenv.config();
 const app = express();
@@ -59,7 +61,8 @@ app.use(express.json());
 app.use(helmet());
 
 // Routes
-app.use("/books", userRoutes);
+app.use("/user", userRoutes);
+app.use("/auth", authRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {
