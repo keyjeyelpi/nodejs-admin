@@ -33,6 +33,8 @@ import express, {
 } from "express";
 import helmet from "helmet";
 
+import { query } from "./config/mysql-db.ts";
+
 import type { ErrorResponse } from "./interface/error.ts";
 
 import authRoutes from "./routes/auth.ts";

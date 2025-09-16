@@ -1,44 +1,88 @@
 import { Router, type Request, type Response } from "express";
-import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import moment from "moment-timezone";
+
+import { query } from "../config/mysql-db.ts";
+import { signature } from "../middleware/signature.ts";
+import { LOGIN, REGISTER } from "../sql/auth.ts";
+import { decrypt } from "../utils/crypto-js.ts";
 
 const router = Router();
 
-// In-memory "users" (for demo only, replace with DB)
-const users: { id: number; email: string; password: string }[] = [];
-let userIdCounter = 1;
-
-const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
+const JWT_SECRET = process.env.JWT_SECRET || "";
 
 // Register
-router.post("/register", async (req: Request, res: Response) => {
-  const { email, password } = req.body;
+router.post("/register", signature, async (req: Request, res: Response) => {
+  const { email, password, firstname, lastname, middlename, address, birthday, username, phone_number, positionid } = req.body;
 
-  if (!email || !password) {
-    return res.status(400).json({ message: "Email and password required" });
+  try {
+    // Bad Request
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password required" });
+    }
+
+    // Check if user already exists
+    const rows: any = await query(
+      REGISTER,
+      [
+        firstname || "",
+        lastname || "",
+        middlename || "",
+        address || "",
+        moment(birthday).toDate() || new Date(),
+        positionid || "",
+        username || "",
+        email || "",
+        phone_number || "",
+        decrypt(password) || "",
+        process.env.MYSQL_SECRET || ""
+      ]
+    );
+
+    // Internal Server Error
+    if (rows.affectedRows !== 1) {
+      res.status(500).json({ message: "User registration failed" });
+      return;
+    }
+
+    // Created
+    res.status(201).json({ message: "User registered successfully" });
+    return;
+
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error", error: err });
   }
-
-  const hashedPassword = await bcrypt.hash(password, 10);
-
-  const newUser = { id: userIdCounter++, email, password: hashedPassword };
-  users.push(newUser);
-
-  res.status(201).json({ message: "User registered", user: { id: newUser.id, email: newUser.email } });
 });
 
 // Login
-router.post("/login", async (req: Request, res: Response) => {
+router.post("/login", signature, async (req: Request, res: Response) => {
   const { email, password } = req.body;
+  try {
+    const decryptedPassword = decrypt(password);
 
-  const user = users.find((u) => u.email === email);
-  if (!user) return res.status(400).json({ message: "Invalid credentials" });
+    const rows: any = await query(
+      LOGIN,
+      [email, email, process.env.MYSQL_SECRET, decryptedPassword]
+    );
 
-  const isMatch = await bcrypt.compare(password, user.password);
-  if (!isMatch) return res.status(400).json({ message: "Invalid credentials" });
+    if (rows.length === 0) {
+      return res.status(400).json({ message: "Invalid credentials" });
+    }
 
-  const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: "1h" });
+    const user = rows[0];
 
-  res.json({ message: "Login successful", token });
+    const token = jwt.sign(
+      { id: user.id, email: user.email },
+      JWT_SECRET,
+      { expiresIn: "1d" }
+    );
+
+    res.json({ message: "Login successful", token });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error", error: err });
+  }
 });
 
 export default router;
