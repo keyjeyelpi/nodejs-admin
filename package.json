@@ -1,5 +1,13 @@
 {
   "type": "module",
+  "scripts": {
+    "prisma:generate": "prisma generate --schema=src/prisma/schema.prisma",
+    "prisma:push": "prisma db push --schema=src/prisma/schema.prisma",
+    "prisma:seed": "ts-node src/prisma/seed.prisma.ts",
+    "prisma:all": "prisma generate --schema=src/prisma/schema.prisma && prisma db push --schema=src/prisma/schema.prisma && ts-node src/prisma/seed.prisma.ts",
+    "start": "ts-node src/index.ts",
+    "dev": "set NODE_ENV=development&& ts-node src/index.ts"
+  },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.19",
@@ -9,11 +17,13 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^24.4.0",
     "nodemon": "^3.1.10",
+    "prettier": "^3.6.2",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.9.2"
   },
   "dependencies": {
+    "@prisma/client": "^6.16.3",
     "bcryptjs": "^3.0.2",
     "body-parser": "^2.2.0",
     "cors": "^2.8.5",
@@ -23,12 +33,8 @@
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
     "moment-timezone": "^0.6.0",
-    "mysql2": "^3.14.5"
-  },
-  "scripts": {
-    "dev": "set NODE_ENV=development&& nodemon --watch src --ext ts,json --exec ts-node --esm --experimental-specifier-resolution=node src/index.ts",
-    "build": "tsc",
-    "start": "set NODE_ENV=production&& nodemon --watch src --ext ts,json --exec ts-node --esm --experimental-specifier-resolution=node src/index.ts",
-    "start1": "set NODE_ENV=production&& node dist/index.js"
+    "mysql2": "^3.14.5",
+    "prisma": "^6.16.3",
+    "uuid": "^13.0.0"
   }
 }

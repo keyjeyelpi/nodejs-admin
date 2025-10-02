@@ -1,0 +1,42 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model AccountType {
+  id                Int     @id @default(autoincrement())
+  account_id        String  @unique
+  title             String
+  description       String
+  is_editable       Boolean
+  is_deletable      Boolean
+  is_selectable     Boolean
+  allowed_to_edit   Boolean
+  users             User[] 
+
+  @@map("account_type")
+}
+
+model User {
+  id              Int         @id @default(autoincrement())
+  user_id         String      @unique
+  country         String
+  account_type_id String
+  lastname        String
+  firstname       String
+  email           String      @unique
+  username        String      @unique
+  password        String
+  contactnumber   String
+  photo           Bytes?
+  created_at       DateTime    @default(now())
+  updated_at       DateTime    @updatedAt
+
+  account_type    AccountType @relation(fields: [account_type_id], references: [account_id])
+
+  @@map("users")
+}

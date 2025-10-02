@@ -1,4 +1,3 @@
-
 interface ErrorResponseData {
   error_message: string;
 }
