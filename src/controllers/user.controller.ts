@@ -1,12 +1,11 @@
-import { Router, type Request, type Response } from "express";
-import { authenticateJWT } from "../middleware/jwt.middleware.ts";
-import { prisma } from "../config/prisma.config.ts";
+import type { Request, Response } from "express";
 import { v4 as uuid } from "uuid";
+
+import { prisma } from "../config/prisma.config.ts";
+
 import { decrypt, hash } from "../utils/encryption.util.ts";
 
-const router = Router();
-
-router.get("/", authenticateJWT, async (_req: Request, res: Response) => {
+export const fetchAllUsers = async (_req: Request, res: Response) => {
   try {
     const users = await prisma.user.findMany({
       include: {
@@ -27,9 +26,9 @@ router.get("/", authenticateJWT, async (_req: Request, res: Response) => {
     console.error(err);
     res.status(500).json({ message: "Server error", error: err });
   }
-});
+};
 
-router.get("/:id", authenticateJWT, async (req: Request, res: Response) => {
+export const fetchUserByAccountID = async (req: Request, res: Response) => {
   const { id } = req.params;
   try {
     const user = await prisma.user.findUnique({
@@ -45,9 +44,9 @@ router.get("/:id", authenticateJWT, async (req: Request, res: Response) => {
     console.error(err);
     res.status(500).json({ message: "Server error", error: err });
   }
-});
+};
 
-router.post("/", authenticateJWT, async (req: Request, res: Response) => {
+export const createUser = async (req: Request, res: Response) => {
   const {
     username,
     email,
@@ -93,61 +92,52 @@ router.post("/", authenticateJWT, async (req: Request, res: Response) => {
     console.error(err);
     return res.status(500).json({ message: "Server error", error: err });
   }
-});
+};
 
-router.put(
-  "/:user_id",
-  authenticateJWT,
-  async (req: Request, res: Response) => {
-    const { user_id } = req.params;
+export const updateUser = async (req: Request, res: Response) => {
+  const { user_id } = req.params;
 
-    if (!user_id) {
-      return res.status(400).json({ message: "user_id is required" });
-    }
-  
-    try {
-      const updatedUser = await prisma.user.update({
-        where: { user_id },
-        data: req.body,
-      });
-
-      res
-        .status(200)
-        .json({ message: `User with ID ${user_id} updated`, data: updatedUser });
-    } catch (err: any) {
-      console.error(err);
-      if (err.code === "P2025") {
-        return res.status(404).json({ message: "User not found" });
-      }
-      res.status(500).json({ message: "Server error", error: err });
-    }
+  if (!user_id) {
+    return res.status(400).json({ message: "user_id is required" });
   }
-);
 
-router.delete(
-  "/:user_id",
-  authenticateJWT,
-  async (req: Request, res: Response) => {
-    const { user_id } = req.params;
+  try {
+    const updatedUser = await prisma.user.update({
+      where: { user_id },
+      data: req.body,
+    });
 
-    if (!user_id) {
-      return res.status(400).json({ message: "user_id is required" });
+    res.status(200).json({
+      message: `User with ID ${user_id} updated`,
+      data: updatedUser,
+    });
+  } catch (err: any) {
+    console.error(err);
+    if (err.code === "P2025") {
+      return res.status(404).json({ message: "User not found" });
     }
-
-    try {
-      await prisma.user.delete({
-        where: { user_id },
-      });
-
-      res.status(200).json({ message: `User with ID ${user_id} deleted` });
-    } catch (err: any) {
-      console.error(err);
-      if (err.code === "P2025") {
-        return res.status(404).json({ message: "User not found" });
-      }
-      res.status(500).json({ message: "Server error", error: err });
-    }
+    res.status(500).json({ message: "Server error", error: err });
   }
-);
+};
 
-export default router;
+export const deleteUser = async (req: Request, res: Response) => {
+  const { user_id } = req.params;
+
+  if (!user_id) {
+    return res.status(400).json({ message: "user_id is required" });
+  }
+
+  try {
+    await prisma.user.delete({
+      where: { user_id },
+    });
+
+    res.status(200).json({ message: `User with ID ${user_id} deleted` });
+  } catch (err: any) {
+    console.error(err);
+    if (err.code === "P2025") {
+      return res.status(404).json({ message: "User not found" });
+    }
+    res.status(500).json({ message: "Server error", error: err });
+  }
+};
