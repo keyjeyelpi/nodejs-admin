@@ -8,7 +8,17 @@ import bcrypt from "bcryptjs";
 const JWT_SECRET = process.env.JWT_SECRET || "";
 
 export const login = async (req: Request, res: Response) => {
+  if (!req.body) {
+    return res.status(400).json({ message: "Request body is missing" });
+  }
+
   const { username, password } = req.body;
+
+  if (!username || !password) {
+    return res
+      .status(400)
+      .json({ message: "Username and password are required" });
+  }
 
   try {
     const user = await prisma.user.findFirst({

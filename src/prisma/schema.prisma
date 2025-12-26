@@ -22,21 +22,78 @@ model AccountType {
 }
 
 model User {
-  id              Int         @id @default(autoincrement())
-  user_id         String      @unique
-  country         String
-  account_type_id String
-  lastname        String
-  firstname       String
-  email           String      @unique
-  username        String      @unique
-  password        String
-  contactnumber   String
-  photo           Bytes?
-  created_at       DateTime    @default(now())
-  updated_at       DateTime    @updatedAt
+  id               Int              @id @default(autoincrement())
+  user_id          String           @unique
+  country          String
+  account_type_id  String
+  lastname         String
+  firstname        String
+  email            String           @unique
+  username         String           @unique
+  password         String
+  contactnumber    String
+  photo            Bytes?
+  created_at       DateTime         @default(now())
+  updated_at       DateTime         @updatedAt
 
-  account_type    AccountType @relation(fields: [account_type_id], references: [account_id])
+  account_type     AccountType      @relation(fields: [account_type_id], references: [account_id])
+  settings         User_settings?
 
   @@map("users")
+}
+
+model User_settings {
+  id                   Int       @id @default(autoincrement())
+  user_id              Int       @unique
+  color_primary        String
+  color_secondary      String
+  dark_mode_preference String    @default("system") // values: light, dark, system
+
+  user                 User      @relation(fields: [user_id], references: [id])
+
+  @@map("user_settings")
+}
+
+model KanbanBoard {
+  id      String   @id @default(cuid())
+  name    String
+  kanbanColumns KanbanColumn[]
+
+  @@map("kanban_boards")
+}
+
+model KanbanColumn {
+  id         String   @id @default(cuid())
+  name       String
+  disableAdd Boolean  @default(false)
+  boardId    String
+  board      KanbanBoard @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  kanbanCards      KanbanCard[]
+
+  @@map("kanban_columns")
+}
+
+model KanbanCard {
+  id             String   @id @default(cuid())
+  title          String
+  description    String
+  categoryTitle  String
+  categoryColor  String
+  likes          Int      @default(0)
+  kanbanColumnId       String
+  kanbanColumn         KanbanColumn   @relation(fields: [kanbanColumnId], references: [id], onDelete: Cascade)
+  kanbanComments       KanbanComment[]
+
+  @@map("kanban_cards")
+}
+
+model KanbanComment {
+  id       String @id @default(cuid())
+  text     String
+  author   String
+  kanbanCardId   String
+  replyForKanbanCardId String?
+  kanbanCard     KanbanCard   @relation(fields: [kanbanCardId], references: [id], onDelete: Cascade)
+
+  @@map("kanban_comments")
 }

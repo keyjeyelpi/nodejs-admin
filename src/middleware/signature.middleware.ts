@@ -5,6 +5,10 @@ import { decrypt, encrypt } from "../utils/encryption.util.ts";
 dotenv.config();
 
 export const signature = (req: Request, res: Response, next: NextFunction) => {
+  if (!req.body) {
+    return res.status(400).json({ message: "Request body is missing" });
+  }
+  
   const { signature, ...body } = req.body;
 
   const predefinedSignature = Object.values(body)
