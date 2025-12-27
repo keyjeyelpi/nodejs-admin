@@ -6,7 +6,7 @@
     "prisma:seed": "ts-node src/prisma/seed.prisma.ts",
     "prisma:all": "prisma generate --schema=src/prisma/schema.prisma && prisma db push --schema=src/prisma/schema.prisma && ts-node src/prisma/seed.prisma.ts",
     "start": "ts-node src/index.ts",
-    "dev": "set NODE_ENV=development&& ts-node src/index.ts",
+    "dev": "set NODE_ENV=development&& nodemon --exec ts-node src/index.ts",
     "lint:fix": "npm run putout:fix && npm run format",
     "putout": "putout src",
     "putout:fix": "putout src --fix",
