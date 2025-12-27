@@ -13,8 +13,8 @@ const app = express();
 app.use("/account", accountRoutes);
 app.use("/auth", authRoutes);
 app.use("/kanban", kanbanRoutes);
-app.use("/user", userRoutes);
-app.use("/user/:user_id/settings", userSettingsRoutes);
+app.use("/users", userRoutes);
+app.use("/users/:user_id/settings", userSettingsRoutes);
 
 // 404 handler
 app.use(error404);

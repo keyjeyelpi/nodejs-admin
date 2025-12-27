@@ -13,9 +13,9 @@ import { signature } from "../middleware/signature.middleware.ts";
 
 const router = Router();
 
-router.get("/", authenticateJWT, signature, fetchAllUsers);
+router.get("/", authenticateJWT, fetchAllUsers);
 
-router.get("/:id", authenticateJWT, signature, fetchUserByAccountID);
+router.get("/:id", authenticateJWT, fetchUserByAccountID);
 
 router.post("/", authenticateJWT, signature, createUser);
 

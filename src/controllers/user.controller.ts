@@ -3,6 +3,7 @@ import { v4 as uuid } from "uuid";
 
 import { prisma } from "../config/prisma.config.ts";
 
+import { toCamelCase } from "../utils/caseConverter.util.ts";
 import { decrypt, hash } from "../utils/encryption.util.ts";
 
 export const fetchAllUsers = async (_req: Request, res: Response) => {
@@ -18,10 +19,11 @@ export const fetchAllUsers = async (_req: Request, res: Response) => {
             is_selectable: true,
           },
         },
+        settings: true,
       },
     });
 
-    res.status(200).json({ message: "", data: users });
+    res.status(200).json({ message: "", data: toCamelCase(users) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error", error: err });
@@ -33,13 +35,16 @@ export const fetchUserByAccountID = async (req: Request, res: Response) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: Number(id) },
+      include: {
+        settings: true,
+      },
     });
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    res.status(200).json({ message: `Get user with ID ${id}`, data: user });
+    res.status(200).json({ message: `Get user with ID ${id}`, data: toCamelCase(user) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error", error: err });
@@ -109,7 +114,7 @@ export const updateUser = async (req: Request, res: Response) => {
 
     res.status(200).json({
       message: `User with ID ${user_id} updated`,
-      data: updatedUser,
+      data: toCamelCase(updatedUser),
     });
   } catch (err: any) {
     console.error(err);

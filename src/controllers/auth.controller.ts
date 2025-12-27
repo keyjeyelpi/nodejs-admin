@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 
 import { prisma } from "../config/prisma.config.ts";
 import { decrypt } from "../utils/encryption.util.ts";
+import { toCamelCase } from "../utils/caseConverter.util.ts";
 import bcrypt from "bcryptjs";
 
 const JWT_SECRET = process.env.JWT_SECRET || "";
@@ -24,6 +25,9 @@ export const login = async (req: Request, res: Response) => {
     const user = await prisma.user.findFirst({
       where: {
         OR: [{ email: username }, { username }],
+      },
+      include: {
+        settings: true,
       },
     });
 
@@ -47,7 +51,7 @@ export const login = async (req: Request, res: Response) => {
 
     res.json({
       message: "Login successful",
-      data: { id: user.user_id, token },
+      data: { token, ...(toCamelCase(user) || {}) },
     });
   } catch (err) {
     console.error(err);
