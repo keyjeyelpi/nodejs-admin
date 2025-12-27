@@ -1,3 +1,4 @@
+import process from "node:process";
 import bcrypt from "bcryptjs";
 import CryptoJS from "crypto-js";
 import dotenv from "dotenv";

@@ -1,5 +1,4 @@
 import { Router } from "express";
-
 import { authenticateJWT } from "../middleware/jwt.middleware.ts";
 import { signature } from "../middleware/signature.middleware.ts";
 

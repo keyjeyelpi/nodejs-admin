@@ -3,6 +3,9 @@ import { v4 as uuid } from "uuid";
 import { prisma } from "../config/prisma.config.ts";
 
 // Interfaces for request validation
+const isUndefined = (a: unknown): a is undefined => typeof a === "undefined";
+
+// Interfaces for request validation
 interface CreateBoardRequest {
   name: string;
 }
@@ -46,14 +49,22 @@ export const getAllKanbanBoards = async (req: Request, res: Response) => {
 
     const [boards, totalCount] = await Promise.all([
       prisma.kanbanBoard.findMany({
-        ...(skip !== undefined && { skip }),
-        ...(limit !== undefined && { take: limit }),
+        ...(!isUndefined(skip) && {
+          skip,
+        }),
+        ...(!isUndefined(limit) && {
+          take: limit,
+        }),
         include: {
           kanbanColumns: {
-            orderBy: { name: "asc" },
+            orderBy: {
+              name: "asc",
+            },
             include: {
               kanbanCards: {
-                orderBy: { title: "asc" },
+                orderBy: {
+                  title: "asc",
+                },
                 include: {
                   kanbanComments: {
                     select: {
@@ -69,7 +80,9 @@ export const getAllKanbanBoards = async (req: Request, res: Response) => {
             },
           },
         },
-        orderBy: { name: "asc" },
+        orderBy: {
+          name: "asc",
+        },
       }),
       prisma.kanbanBoard.count(),
     ]);
@@ -118,7 +131,10 @@ export const getAllKanbanBoards = async (req: Request, res: Response) => {
     });
   } catch (err) {
     console.error("Error fetching boards:", err);
-    res.status(500).json({ message: "Server error", error: err });
+    res.status(500).json({
+      message: "Server error",
+      error: err,
+    });
   }
 };
 
@@ -130,13 +146,19 @@ export const getBoardList = async (req: Request, res: Response) => {
 
     const [boards, totalCount] = await Promise.all([
       prisma.kanbanBoard.findMany({
-        ...(skip !== undefined && { skip }),
-        ...(limit !== undefined && { take: limit }),
+        ...(!isUndefined(skip) && {
+          skip,
+        }),
+        ...(!isUndefined(limit) && {
+          take: limit,
+        }),
         select: {
           id: true,
           name: true,
         },
-        orderBy: { name: "asc" },
+        orderBy: {
+          name: "asc",
+        },
       }),
       prisma.kanbanBoard.count(),
     ]);
@@ -159,29 +181,36 @@ export const getBoardList = async (req: Request, res: Response) => {
     });
   } catch (err) {
     console.error("Error fetching board list:", err);
-    res.status(500).json({ message: "Server error", error: err });
+    res.status(500).json({
+      message: "Server error",
+      error: err,
+    });
   }
 };
 
 export const getBoardById = async (req: Request, res: Response) => {
   const { id } = req.params;
 
-  if (!id) {
-    return res.status(400).json({ message: "Board id is required" });
-  }
+  if (!id)
+    return res.status(400).json({
+      message: "Board id is required",
+    });
 
   try {
     const board = await prisma.kanbanBoard.findUnique({
-      where: { id },
+      where: {
+        id,
+      },
       select: {
         id: true,
         name: true,
       },
     });
 
-    if (!board) {
-      return res.status(404).json({ message: "Board not found" });
-    }
+    if (!board)
+      return res.status(404).json({
+        message: "Board not found",
+      });
 
     res.status(200).json({
       message: `Retrieved board with ID ${id}`,
@@ -189,7 +218,10 @@ export const getBoardById = async (req: Request, res: Response) => {
     });
   } catch (err) {
     console.error("Error fetching board:", err);
-    res.status(500).json({ message: "Server error", error: err });
+    res.status(500).json({
+      message: "Server error",
+      error: err,
+    });
   }
 };
 
@@ -199,24 +231,37 @@ export const getKanbanBoardById = async (req: Request, res: Response) => {
   const limit = parseInt(req.query.limit as string) || undefined;
   const skip = page && limit ? (page - 1) * limit : undefined;
 
-  if (!id) {
-    return res.status(400).json({ message: "Board id is required" });
-  }
+  if (!id)
+    return res.status(400).json({
+      message: "Board id is required",
+    });
 
   try {
     const board = await prisma.kanbanBoard.findUnique({
-      where: { id },
+      where: {
+        id,
+      },
       include: {
         kanbanColumns: {
-          orderBy: { name: "asc" },
+          orderBy: {
+            name: "asc",
+          },
           include: {
             kanbanCards: {
-              ...(skip !== undefined && { skip }),
-              ...(limit !== undefined && { take: limit }),
-              orderBy: { title: "asc" },
+              ...(!isUndefined(skip) && {
+                skip,
+              }),
+              ...(!isUndefined(limit) && {
+                take: limit,
+              }),
+              orderBy: {
+                title: "asc",
+              },
               include: {
                 kanbanComments: {
-                  orderBy: { id: "asc" },
+                  orderBy: {
+                    id: "asc",
+                  },
                 },
               },
             },
@@ -225,9 +270,10 @@ export const getKanbanBoardById = async (req: Request, res: Response) => {
       },
     });
 
-    if (!board) {
-      return res.status(404).json({ message: "Kanban board not found" });
-    }
+    if (!board)
+      return res.status(404).json({
+        message: "Kanban board not found",
+      });
 
     // Get total card count for pagination
     const totalCardCount = await prisma.kanbanCard.count({
@@ -309,7 +355,10 @@ export const getKanbanBoardById = async (req: Request, res: Response) => {
     });
   } catch (err) {
     console.error("Error fetching board:", err);
-    res.status(500).json({ message: "Server error", error: err });
+    res.status(500).json({
+      message: "Server error",
+      error: err,
+    });
   }
 };
 
@@ -317,9 +366,10 @@ export const createBoard = async (req: Request, res: Response) => {
   const { name }: CreateBoardRequest = req.body;
 
   try {
-    if (!name?.trim()) {
-      return res.status(400).json({ message: "Board name is required" });
-    }
+    if (!name?.trim())
+      return res.status(400).json({
+        message: "Board name is required",
+      });
 
     const board = await prisma.kanbanBoard.create({
       data: {
@@ -337,26 +387,40 @@ export const createBoard = async (req: Request, res: Response) => {
     });
   } catch (err) {
     console.error("Error creating board:", err);
-    res.status(500).json({ message: "Server error", error: err });
+    res.status(500).json({
+      message: "Server error",
+      error: err,
+    });
   }
 };
 
 export const updateBoard = async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const { name }: { name: string } = req.body;
+  const { body, params } = req;
+  const { id } = params;
+  const {
+    name,
+  }: {
+    name: string;
+  } = body;
 
   try {
-    if (!id) {
-      return res.status(400).json({ message: "Board id is required" });
-    }
+    if (!id)
+      return res.status(400).json({
+        message: "Board id is required",
+      });
 
-    if (!name?.trim()) {
-      return res.status(400).json({ message: "Board name is required" });
-    }
+    if (!name?.trim())
+      return res.status(400).json({
+        message: "Board name is required",
+      });
 
     const updatedBoard = await prisma.kanbanBoard.update({
-      where: { id },
-      data: { name: name.trim() },
+      where: {
+        id,
+      },
+      data: {
+        name: name.trim(),
+      },
       include: {
         kanbanColumns: {
           include: {
@@ -376,10 +440,16 @@ export const updateBoard = async (req: Request, res: Response) => {
     });
   } catch (err: any) {
     console.error("Error updating board:", err);
-    if (err.code === "P2025") {
-      return res.status(404).json({ message: "Board not found" });
-    }
-    res.status(500).json({ message: "Server error", error: err });
+
+    if (err.code === "P2025")
+      return res.status(404).json({
+        message: "Board not found",
+      });
+
+    res.status(500).json({
+      message: "Server error",
+      error: err,
+    });
   }
 };
 
@@ -387,27 +457,38 @@ export const deleteBoard = async (req: Request, res: Response) => {
   const { id } = req.params;
 
   try {
-    if (!id) {
-      return res.status(400).json({ message: "Board id is required" });
-    }
+    if (!id)
+      return res.status(400).json({
+        message: "Board id is required",
+      });
 
     // Check if board exists
     const existingBoard = await prisma.kanbanBoard.findUnique({
-      where: { id },
+      where: {
+        id,
+      },
     });
 
-    if (!existingBoard) {
-      return res.status(404).json({ message: "Board not found" });
-    }
+    if (!existingBoard)
+      return res.status(404).json({
+        message: "Board not found",
+      });
 
     await prisma.kanbanBoard.delete({
-      where: { id },
+      where: {
+        id,
+      },
     });
 
-    res.status(200).json({ message: `Board with ID ${id} deleted` });
+    res.status(200).json({
+      message: `Board with ID ${id} deleted`,
+    });
   } catch (err: any) {
     console.error("Error deleting board:", err);
-    res.status(500).json({ message: "Server error", error: err });
+    res.status(500).json({
+      message: "Server error",
+      error: err,
+    });
   }
 };
 
@@ -415,18 +496,22 @@ export const addColumn = async (req: Request, res: Response) => {
   const { boardId, name, disableAdd }: CreateColumnRequest = req.body;
 
   try {
-    if (!boardId?.trim() || !name?.trim()) {
-      return res.status(400).json({ message: "boardId and name are required" });
-    }
+    if (!boardId?.trim() || !name?.trim())
+      return res.status(400).json({
+        message: "boardId and name are required",
+      });
 
     // Check if board exists
     const boardExists = await prisma.kanbanBoard.findUnique({
-      where: { id: boardId },
+      where: {
+        id: boardId,
+      },
     });
 
-    if (!boardExists) {
-      return res.status(404).json({ message: "Board not found" });
-    }
+    if (!boardExists)
+      return res.status(404).json({
+        message: "Board not found",
+      });
 
     const column = await prisma.kanbanColumn.create({
       data: {
@@ -440,15 +525,22 @@ export const addColumn = async (req: Request, res: Response) => {
       },
     });
 
-    res
-      .status(201)
-      .json({ message: "Column added successfully", data: column });
+    res.status(201).json({
+      message: "Column added successfully",
+      data: column,
+    });
   } catch (err: any) {
     console.error("Error creating column:", err);
-    if (err.code === "P2003") {
-      return res.status(400).json({ message: "Invalid board ID" });
-    }
-    res.status(500).json({ message: "Server error", error: err });
+
+    if (err.code === "P2003")
+      return res.status(400).json({
+        message: "Invalid board ID",
+      });
+
+    res.status(500).json({
+      message: "Server error",
+      error: err,
+    });
   }
 };
 
@@ -462,26 +554,27 @@ export const addCard = async (req: Request, res: Response) => {
   }: CreateCardRequest = req.body;
 
   try {
-    if (!kanbanColumnId?.trim() || !title?.trim()) {
-      return res
-        .status(400)
-        .json({ message: "kanbanColumnId and title are required" });
-    }
+    if (!kanbanColumnId?.trim() || !title?.trim())
+      return res.status(400).json({
+        message: "kanbanColumnId and title are required",
+      });
 
     // Check if column exists and is not disabled for adding
     const column = await prisma.kanbanColumn.findUnique({
-      where: { id: kanbanColumnId },
+      where: {
+        id: kanbanColumnId,
+      },
     });
 
-    if (!column) {
-      return res.status(404).json({ message: "Column not found" });
-    }
+    if (!column)
+      return res.status(404).json({
+        message: "Column not found",
+      });
 
-    if (column.disableAdd) {
-      return res
-        .status(400)
-        .json({ message: "Adding cards is disabled for this column" });
-    }
+    if (column.disableAdd)
+      return res.status(400).json({
+        message: "Adding cards is disabled for this column",
+      });
 
     const card = await prisma.kanbanCard.create({
       data: {
@@ -497,13 +590,22 @@ export const addCard = async (req: Request, res: Response) => {
       },
     });
 
-    res.status(201).json({ message: "Card added successfully", data: card });
+    res.status(201).json({
+      message: "Card added successfully",
+      data: card,
+    });
   } catch (err: any) {
     console.error("Error creating card:", err);
-    if (err.code === "P2003") {
-      return res.status(400).json({ message: "Invalid column ID" });
-    }
-    res.status(500).json({ message: "Server error", error: err });
+
+    if (err.code === "P2003")
+      return res.status(400).json({
+        message: "Invalid column ID",
+      });
+
+    res.status(500).json({
+      message: "Server error",
+      error: err,
+    });
   }
 };
 
@@ -511,33 +613,42 @@ export const moveCard = async (req: Request, res: Response) => {
   const { cardId, targetColumnId }: MoveCardRequest = req.body;
 
   try {
-    if (!cardId?.trim() || !targetColumnId?.trim()) {
-      return res
-        .status(400)
-        .json({ message: "cardId and targetColumnId are required" });
-    }
+    if (!cardId?.trim() || !targetColumnId?.trim())
+      return res.status(400).json({
+        message: "cardId and targetColumnId are required",
+      });
 
     // Check if card exists
     const card = await prisma.kanbanCard.findUnique({
-      where: { id: cardId },
+      where: {
+        id: cardId,
+      },
     });
 
-    if (!card) {
-      return res.status(404).json({ message: "Card not found" });
-    }
+    if (!card)
+      return res.status(404).json({
+        message: "Card not found",
+      });
 
     // Check if target column exists
     const targetColumn = await prisma.kanbanColumn.findUnique({
-      where: { id: targetColumnId },
+      where: {
+        id: targetColumnId,
+      },
     });
 
-    if (!targetColumn) {
-      return res.status(404).json({ message: "Target column not found" });
-    }
+    if (!targetColumn)
+      return res.status(404).json({
+        message: "Target column not found",
+      });
 
     const updatedCard = await prisma.kanbanCard.update({
-      where: { id: cardId },
-      data: { kanbanColumnId: targetColumnId },
+      where: {
+        id: cardId,
+      },
+      data: {
+        kanbanColumnId: targetColumnId,
+      },
       include: {
         kanbanColumn: true,
         kanbanComments: true,
@@ -550,22 +661,32 @@ export const moveCard = async (req: Request, res: Response) => {
     });
   } catch (err: any) {
     console.error("Error moving card:", err);
-    res.status(500).json({ message: "Server error", error: err });
+    res.status(500).json({
+      message: "Server error",
+      error: err,
+    });
   }
 };
 
 export const updateColumn = async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const { name, disableAdd } = req.body;
+  const { body, params } = req;
+  const { id } = params;
+  const { name, disableAdd } = body;
 
   try {
-    if (!id) {
-      return res.status(400).json({ message: "id is required" });
-    }
+    if (!id)
+      return res.status(400).json({
+        message: "id is required",
+      });
 
     const updatedColumn = await prisma.kanbanColumn.update({
-      where: { id },
-      data: { name, disableAdd },
+      where: {
+        id,
+      },
+      data: {
+        name,
+        disableAdd,
+      },
     });
 
     res.status(200).json({
@@ -574,25 +695,41 @@ export const updateColumn = async (req: Request, res: Response) => {
     });
   } catch (err: any) {
     console.error(err);
-    if (err.code === "P2025") {
-      return res.status(404).json({ message: "Column not found" });
-    }
-    res.status(500).json({ message: "Server error", error: err });
+
+    if (err.code === "P2025")
+      return res.status(404).json({
+        message: "Column not found",
+      });
+
+    res.status(500).json({
+      message: "Server error",
+      error: err,
+    });
   }
 };
 
 export const updateCard = async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const { title, description, categoryTitle, categoryColor, likes } = req.body;
+  const { body, params } = req;
+  const { id } = params;
+  const { title, description, categoryTitle, categoryColor, likes } = body;
 
   try {
-    if (!id) {
-      return res.status(400).json({ message: "id is required" });
-    }
+    if (!id)
+      return res.status(400).json({
+        message: "id is required",
+      });
 
     const updatedCard = await prisma.kanbanCard.update({
-      where: { id },
-      data: { title, description, categoryTitle, categoryColor, likes },
+      where: {
+        id,
+      },
+      data: {
+        title,
+        description,
+        categoryTitle,
+        categoryColor,
+        likes,
+      },
     });
 
     res.status(200).json({
@@ -601,10 +738,16 @@ export const updateCard = async (req: Request, res: Response) => {
     });
   } catch (err: any) {
     console.error(err);
-    if (err.code === "P2025") {
-      return res.status(404).json({ message: "Card not found" });
-    }
-    res.status(500).json({ message: "Server error", error: err });
+
+    if (err.code === "P2025")
+      return res.status(404).json({
+        message: "Card not found",
+      });
+
+    res.status(500).json({
+      message: "Server error",
+      error: err,
+    });
   }
 };
 
@@ -612,21 +755,32 @@ export const deleteColumn = async (req: Request, res: Response) => {
   const { id } = req.params;
 
   try {
-    if (!id) {
-      return res.status(400).json({ message: "id is required" });
-    }
+    if (!id)
+      return res.status(400).json({
+        message: "id is required",
+      });
 
     await prisma.kanbanColumn.delete({
-      where: { id },
+      where: {
+        id,
+      },
     });
 
-    res.status(200).json({ message: `Column with ID ${id} deleted` });
+    res.status(200).json({
+      message: `Column with ID ${id} deleted`,
+    });
   } catch (err: any) {
     console.error(err);
-    if (err.code === "P2025") {
-      return res.status(404).json({ message: "Column not found" });
-    }
-    res.status(500).json({ message: "Server error", error: err });
+
+    if (err.code === "P2025")
+      return res.status(404).json({
+        message: "Column not found",
+      });
+
+    res.status(500).json({
+      message: "Server error",
+      error: err,
+    });
   }
 };
 
@@ -634,27 +788,38 @@ export const deleteCard = async (req: Request, res: Response) => {
   const { id } = req.params;
 
   try {
-    if (!id) {
-      return res.status(400).json({ message: "id is required" });
-    }
+    if (!id)
+      return res.status(400).json({
+        message: "id is required",
+      });
 
     // Check if card exists
     const existingCard = await prisma.kanbanCard.findUnique({
-      where: { id },
+      where: {
+        id,
+      },
     });
 
-    if (!existingCard) {
-      return res.status(404).json({ message: "Card not found" });
-    }
+    if (!existingCard)
+      return res.status(404).json({
+        message: "Card not found",
+      });
 
     await prisma.kanbanCard.delete({
-      where: { id },
+      where: {
+        id,
+      },
     });
 
-    res.status(200).json({ message: `Card with ID ${id} deleted` });
+    res.status(200).json({
+      message: `Card with ID ${id} deleted`,
+    });
   } catch (err: any) {
     console.error("Error deleting card:", err);
-    res.status(500).json({ message: "Server error", error: err });
+    res.status(500).json({
+      message: "Server error",
+      error: err,
+    });
   }
 };
 
@@ -662,20 +827,22 @@ export const addComment = async (req: Request, res: Response) => {
   const { kanbanCardId, text, author }: CreateCommentRequest = req.body;
 
   try {
-    if (!kanbanCardId?.trim() || !text?.trim() || !author?.trim()) {
-      return res
-        .status(400)
-        .json({ message: "kanbanCardId, text, and author are required" });
-    }
+    if (!kanbanCardId?.trim() || !text?.trim() || !author?.trim())
+      return res.status(400).json({
+        message: "kanbanCardId, text, and author are required",
+      });
 
     // Check if card exists
     const cardExists = await prisma.kanbanCard.findUnique({
-      where: { id: kanbanCardId },
+      where: {
+        id: kanbanCardId,
+      },
     });
 
-    if (!cardExists) {
-      return res.status(404).json({ message: "Card not found" });
-    }
+    if (!cardExists)
+      return res.status(404).json({
+        message: "Card not found",
+      });
 
     const comment = await prisma.kanbanComment.create({
       data: {
@@ -686,34 +853,52 @@ export const addComment = async (req: Request, res: Response) => {
       },
     });
 
-    res
-      .status(201)
-      .json({ message: "Comment added successfully", data: comment });
+    res.status(201).json({
+      message: "Comment added successfully",
+      data: comment,
+    });
   } catch (err: any) {
     console.error("Error creating comment:", err);
-    if (err.code === "P2003") {
-      return res.status(400).json({ message: "Invalid card ID" });
-    }
-    res.status(500).json({ message: "Server error", error: err });
+
+    if (err.code === "P2003")
+      return res.status(400).json({
+        message: "Invalid card ID",
+      });
+
+    res.status(500).json({
+      message: "Server error",
+      error: err,
+    });
   }
 };
 
 export const updateComment = async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const { text }: { text: string } = req.body;
+  const { body, params } = req;
+  const { id } = params;
+  const {
+    text,
+  }: {
+    text: string;
+  } = body;
 
   try {
-    if (!id) {
-      return res.status(400).json({ message: "Comment id is required" });
-    }
+    if (!id)
+      return res.status(400).json({
+        message: "Comment id is required",
+      });
 
-    if (!text?.trim()) {
-      return res.status(400).json({ message: "Comment text is required" });
-    }
+    if (!text?.trim())
+      return res.status(400).json({
+        message: "Comment text is required",
+      });
 
     const updatedComment = await prisma.kanbanComment.update({
-      where: { id },
-      data: { text: text.trim() },
+      where: {
+        id,
+      },
+      data: {
+        text: text.trim(),
+      },
     });
 
     res.status(200).json({
@@ -722,10 +907,16 @@ export const updateComment = async (req: Request, res: Response) => {
     });
   } catch (err: any) {
     console.error("Error updating comment:", err);
-    if (err.code === "P2025") {
-      return res.status(404).json({ message: "Comment not found" });
-    }
-    res.status(500).json({ message: "Server error", error: err });
+
+    if (err.code === "P2025")
+      return res.status(404).json({
+        message: "Comment not found",
+      });
+
+    res.status(500).json({
+      message: "Server error",
+      error: err,
+    });
   }
 };
 
@@ -733,32 +924,45 @@ export const deleteComment = async (req: Request, res: Response) => {
   const { id } = req.params;
 
   try {
-    if (!id) {
-      return res.status(400).json({ message: "Comment id is required" });
-    }
+    if (!id)
+      return res.status(400).json({
+        message: "Comment id is required",
+      });
 
     // Check if comment exists
     const existingComment = await prisma.kanbanComment.findUnique({
-      where: { id },
+      where: {
+        id,
+      },
     });
 
-    if (!existingComment) {
-      return res.status(404).json({ message: "Comment not found" });
-    }
+    if (!existingComment)
+      return res.status(404).json({
+        message: "Comment not found",
+      });
 
     // Delete all replies to this comment first
     await prisma.kanbanComment.deleteMany({
-      where: { replyForKanbanCardId: id },
+      where: {
+        replyForKanbanCardId: id,
+      },
     });
 
     await prisma.kanbanComment.delete({
-      where: { id },
+      where: {
+        id,
+      },
     });
 
-    res.status(200).json({ message: `Comment with ID ${id} deleted` });
+    res.status(200).json({
+      message: `Comment with ID ${id} deleted`,
+    });
   } catch (err: any) {
     console.error("Error deleting comment:", err);
-    res.status(500).json({ message: "Server error", error: err });
+    res.status(500).json({
+      message: "Server error",
+      error: err,
+    });
   }
 };
 
@@ -766,20 +970,22 @@ export const addReply = async (req: Request, res: Response) => {
   const { commentId, text, author }: CreateReplyRequest = req.body;
 
   try {
-    if (!commentId?.trim() || !text?.trim() || !author?.trim()) {
-      return res
-        .status(400)
-        .json({ message: "commentId, text, and author are required" });
-    }
+    if (!commentId?.trim() || !text?.trim() || !author?.trim())
+      return res.status(400).json({
+        message: "commentId, text, and author are required",
+      });
 
     // Check if parent comment exists
     const parentComment = await prisma.kanbanComment.findUnique({
-      where: { id: commentId },
+      where: {
+        id: commentId,
+      },
     });
 
-    if (!parentComment) {
-      return res.status(404).json({ message: "Parent comment not found" });
-    }
+    if (!parentComment)
+      return res.status(404).json({
+        message: "Parent comment not found",
+      });
 
     const reply = await prisma.kanbanComment.create({
       data: {
@@ -791,10 +997,16 @@ export const addReply = async (req: Request, res: Response) => {
       },
     });
 
-    res.status(201).json({ message: "Reply added successfully", data: reply });
+    res.status(201).json({
+      message: "Reply added successfully",
+      data: reply,
+    });
   } catch (err: any) {
     console.error("Error creating reply:", err);
-    res.status(500).json({ message: "Server error", error: err });
+    res.status(500).json({
+      message: "Server error",
+      error: err,
+    });
   }
 };
 
@@ -805,28 +1017,42 @@ export const getReplies = async (req: Request, res: Response) => {
   const skip = page && limit ? (page - 1) * limit : undefined;
 
   try {
-    if (!commentId) {
-      return res.status(400).json({ message: "Comment id is required" });
-    }
+    if (!commentId)
+      return res.status(400).json({
+        message: "Comment id is required",
+      });
 
     // Check if parent comment exists
     const parentComment = await prisma.kanbanComment.findUnique({
-      where: { id: commentId },
+      where: {
+        id: commentId,
+      },
     });
 
-    if (!parentComment) {
-      return res.status(404).json({ message: "Comment not found" });
-    }
+    if (!parentComment)
+      return res.status(404).json({
+        message: "Comment not found",
+      });
 
     const [replies, totalCount] = await Promise.all([
       prisma.kanbanComment.findMany({
-        where: { replyForKanbanCardId: commentId },
-        ...(skip !== undefined && { skip }),
-        ...(limit !== undefined && { take: limit }),
-        orderBy: { id: "asc" },
+        where: {
+          replyForKanbanCardId: commentId,
+        },
+        ...(!isUndefined(skip) && {
+          skip,
+        }),
+        ...(!isUndefined(limit) && {
+          take: limit,
+        }),
+        orderBy: {
+          id: "asc",
+        },
       }),
       prisma.kanbanComment.count({
-        where: { replyForKanbanCardId: commentId },
+        where: {
+          replyForKanbanCardId: commentId,
+        },
       }),
     ]);
 
@@ -848,32 +1074,48 @@ export const getReplies = async (req: Request, res: Response) => {
     });
   } catch (err: any) {
     console.error("Error fetching replies:", err);
-    res.status(500).json({ message: "Server error", error: err });
+    res.status(500).json({
+      message: "Server error",
+      error: err,
+    });
   }
 };
 
 export const likeCard = async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const { increment = true }: { increment?: boolean } = req.body;
+  const { body, params } = req;
+  const { id } = params;
+  const {
+    increment = true,
+  }: {
+    increment?: boolean;
+  } = body;
 
   try {
-    if (!id) {
-      return res.status(400).json({ message: "Card id is required" });
-    }
+    if (!id)
+      return res.status(400).json({
+        message: "Card id is required",
+      });
 
     const card = await prisma.kanbanCard.findUnique({
-      where: { id },
+      where: {
+        id,
+      },
     });
 
-    if (!card) {
-      return res.status(404).json({ message: "Card not found" });
-    }
+    if (!card)
+      return res.status(404).json({
+        message: "Card not found",
+      });
 
     const newLikes = increment ? card.likes + 1 : Math.max(0, card.likes - 1);
 
     const updatedCard = await prisma.kanbanCard.update({
-      where: { id },
-      data: { likes: newLikes },
+      where: {
+        id,
+      },
+      data: {
+        likes: newLikes,
+      },
     });
 
     res.status(200).json({
@@ -882,6 +1124,9 @@ export const likeCard = async (req: Request, res: Response) => {
     });
   } catch (err: any) {
     console.error("Error updating card likes:", err);
-    res.status(500).json({ message: "Server error", error: err });
+    res.status(500).json({
+      message: "Server error",
+      error: err,
+    });
   }
 };

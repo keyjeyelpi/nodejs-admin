@@ -1,16 +1,15 @@
-import bcrypt from "bcryptjs";
-import { prisma } from "../config/prisma.config.ts";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import process from "node:process";
 import { v4 as uuid } from "uuid";
 import dotenv from "dotenv";
+import { prisma } from "../config/prisma.config.ts";
 import { hash } from "../utils/encryption.util.ts";
-import { readFileSync } from "fs";
-import { join } from "path";
 
 dotenv.config();
 
 const main = async () => {
   console.log("🌱 Starting database seeding...");
-
   // Clear existing data in correct order (due to foreign key constraints)
   console.log("🧹 Cleaning existing data...");
   await prisma.kanbanComment.deleteMany();
@@ -53,6 +52,7 @@ const main = async () => {
   ];
 
   const createdAccountTypes = [];
+
   for (const [index, type] of accountTypes.entries()) {
     const accountType = await prisma.accountType.create({
       data: {
@@ -60,6 +60,7 @@ const main = async () => {
         ...type,
       },
     });
+
     createdAccountTypes.push(accountType);
   }
 
@@ -91,13 +92,14 @@ const main = async () => {
   });
 
   console.log("📋 Creating kanban board and importing data...");
-
   // Read and parse the kanban data JSON file
   const kanbanDataPath = join(process.cwd(), "src", "data", "kanban.data.json");
   const rawData = readFileSync(kanbanDataPath, "utf8");
+
   // Remove BOM if present
   const cleanData =
     rawData.charCodeAt(0) === 0xfeff ? rawData.slice(1) : rawData;
+
   const kanbanData = JSON.parse(cleanData);
 
   // Create a main kanban board
@@ -109,8 +111,8 @@ const main = async () => {
   });
 
   console.log("📝 Creating columns and cards from JSON data...");
-
   // Process each column from the JSON data
+
   for (const columnData of kanbanData) {
     const column = await prisma.kanbanColumn.create({
       data: {
@@ -124,7 +126,8 @@ const main = async () => {
     // Process each card in the column
     for (const item of columnData.items) {
       // Truncate description if too long (MySQL VARCHAR limit)
-      let description = item.content.description;
+      let { description } = item.content;
+
       if (description && description.length > 100) {
         // Remove HTML tags and truncate
         description =
@@ -144,7 +147,7 @@ const main = async () => {
       });
 
       // Process comments for the card
-      if (item.content.comments && item.content.comments.length > 0) {
+      if (item.content.comments && item.content.comments.length > 0)
         for (const comment of item.content.comments) {
           const createdComment = await prisma.kanbanComment.create({
             data: {
@@ -156,7 +159,7 @@ const main = async () => {
           });
 
           // Process replies if they exist
-          if (comment.replies && comment.replies.length > 0) {
+          if (comment.replies && comment.replies.length > 0)
             for (const reply of comment.replies) {
               await prisma.kanbanComment.create({
                 data: {
@@ -168,9 +171,7 @@ const main = async () => {
                 },
               });
             }
-          }
         }
-      }
     }
   }
 

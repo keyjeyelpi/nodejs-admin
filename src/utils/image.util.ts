@@ -1,4 +1,5 @@
-import fs from "fs";
+import fs from "node:fs";
+import { Buffer } from "node:buffer";
 
 export const imageToBase64 = (path: string): string => {
   const img = fs.readFileSync(path);
@@ -18,7 +19,7 @@ export const checkImageSize = (
   maxSizeInMB: number
 ): boolean => {
   const imgBuffer = Buffer.from(base64String, "base64");
-  const sizeInMB = imgBuffer.length / (1024 * 1024);
+  const sizeInMB = imgBuffer.length / 1024 ** 2;
 
   return sizeInMB <= maxSizeInMB;
 };

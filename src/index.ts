@@ -1,9 +1,9 @@
+import process from "node:process";
 import bodyParser from "body-parser";
 import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
 import helmet from "helmet";
-
 import routes from "./routes/index.ts";
 
 dotenv.config();
@@ -16,7 +16,11 @@ app.use(
     extended: true,
   })
 );
-app.use(bodyParser.urlencoded({ extended: false }));
+app.use(
+  bodyParser.urlencoded({
+    extended: false,
+  })
+);
 app.use(bodyParser.json());
 
 app.use(
