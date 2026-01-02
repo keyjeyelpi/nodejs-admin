@@ -80,6 +80,7 @@ model KanbanColumn {
   id         String   @id @default(cuid())
   name       String
   disableAdd Boolean  @default(false)
+  order      Int      @default(0)
   boardId    String
   board      KanbanBoard @relation(fields: [boardId], references: [id], onDelete: Cascade)
   kanbanCards      KanbanCard[]

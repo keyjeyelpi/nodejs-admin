@@ -116,12 +116,13 @@ const main = async () => {
   const priorities = ['URGENT', 'HIGH', 'MEDIUM', 'LOW'];
   const statuses = ['TO_DO', 'DONE', 'REVIEW', 'PROCESS'];
 
-  for (const columnData of kanbanData) {
+  for (const [index, columnData] of kanbanData.entries()) {
     const column = await prisma.kanbanColumn.create({
       data: {
         id: columnData.id,
         name: columnData.name,
         disableAdd: columnData.disableAdd || false,
+        order: index,
         boardId: mainBoard.id,
       },
     });

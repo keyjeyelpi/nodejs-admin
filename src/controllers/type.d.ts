@@ -21,6 +21,7 @@ export interface CreateColumnRequest {
   boardId: string;
   name: string;
   disableAdd?: boolean;
+  order?: number;
 }
 
 export interface CreateCardRequest {

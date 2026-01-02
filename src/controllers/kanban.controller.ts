@@ -218,7 +218,7 @@ export const getKanbanBoardById = async (req: Request, res: Response) => {
       include: {
         kanbanColumns: {
           orderBy: {
-            name: "asc",
+            order: "asc",
           },
           include: {
             kanbanCards: {
@@ -469,7 +469,7 @@ export const deleteBoard = async (req: Request, res: Response) => {
 };
 
 export const addColumn = async (req: Request, res: Response) => {
-  const { boardId, name, disableAdd }: CreateColumnRequest = req.body;
+  const { boardId, name, disableAdd, order }: CreateColumnRequest = req.body;
 
   try {
     if (!boardId?.trim() || !name?.trim())
@@ -494,6 +494,7 @@ export const addColumn = async (req: Request, res: Response) => {
         id: uuid(),
         name: name.trim(),
         disableAdd: disableAdd || false,
+        order: order || 0,
         boardId,
       },
       include: {
@@ -651,7 +652,7 @@ export const moveCard = async (req: Request, res: Response) => {
 export const updateColumn = async (req: Request, res: Response) => {
   const { body, params } = req;
   const { id } = params;
-  const { name, disableAdd } = body;
+  const { name, disableAdd, order } = body;
 
   try {
     if (!id)
@@ -666,6 +667,7 @@ export const updateColumn = async (req: Request, res: Response) => {
       data: {
         name,
         disableAdd,
+        order,
       },
     });
 
