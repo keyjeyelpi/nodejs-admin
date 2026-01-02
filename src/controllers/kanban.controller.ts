@@ -1,45 +1,17 @@
 import type { Request, Response } from "express";
 import { v4 as uuid } from "uuid";
 import { prisma } from "../config/prisma.config.ts";
+import type {
+  CreateBoardRequest,
+  CreateCardRequest,
+  CreateColumnRequest,
+  CreateCommentRequest,
+  CreateReplyRequest,
+  MoveCardRequest,
+} from "./type.d.ts";
 
 // Interfaces for request validation
 const isUndefined = (a: unknown): a is undefined => typeof a === "undefined";
-
-// Interfaces for request validation
-interface CreateBoardRequest {
-  name: string;
-}
-
-interface CreateColumnRequest {
-  boardId: string;
-  name: string;
-  disableAdd?: boolean;
-}
-
-interface CreateCardRequest {
-  kanbanColumnId: string;
-  title: string;
-  description?: string;
-  categoryTitle?: string;
-  categoryColor?: string;
-}
-
-interface CreateCommentRequest {
-  kanbanCardId: string;
-  text: string;
-  author: string;
-}
-
-interface CreateReplyRequest {
-  commentId: string;
-  text: string;
-  author: string;
-}
-
-interface MoveCardRequest {
-  cardId: string;
-  targetColumnId: string;
-}
 
 export const getAllKanbanBoards = async (req: Request, res: Response) => {
   try {
@@ -105,6 +77,8 @@ export const getAllKanbanBoards = async (req: Request, res: Response) => {
               label: card.categoryTitle,
               color: card.categoryColor,
             },
+            priority: card.priority,
+            status: card.status,
             likes: card.likes,
             comments: card.kanbanComments.filter((c) => !c.replyForKanbanCardId)
               .length,
@@ -330,6 +304,8 @@ export const getKanbanBoardById = async (req: Request, res: Response) => {
                 label: card.categoryTitle,
                 color: card.categoryColor,
               },
+              priority: card.priority,
+              status: card.status,
               likes: card.likes,
               comments: commentsWithReplies,
             },
@@ -551,6 +527,8 @@ export const addCard = async (req: Request, res: Response) => {
     description,
     categoryTitle,
     categoryColor,
+    priority,
+    status,
   }: CreateCardRequest = req.body;
 
   try {
@@ -583,6 +561,8 @@ export const addCard = async (req: Request, res: Response) => {
         description: description?.trim() || "",
         categoryTitle: categoryTitle?.trim() || "",
         categoryColor: categoryColor?.trim() || "",
+        priority: priority || "MEDIUM",
+        status: status || "TO_DO",
         kanbanColumnId,
       },
       include: {
@@ -711,7 +691,15 @@ export const updateColumn = async (req: Request, res: Response) => {
 export const updateCard = async (req: Request, res: Response) => {
   const { body, params } = req;
   const { id } = params;
-  const { title, description, categoryTitle, categoryColor, likes } = body;
+  const {
+    title,
+    description,
+    categoryTitle,
+    categoryColor,
+    likes,
+    priority,
+    status,
+  } = body;
 
   try {
     if (!id)
@@ -729,6 +717,8 @@ export const updateCard = async (req: Request, res: Response) => {
         categoryTitle,
         categoryColor,
         likes,
+        priority,
+        status,
       },
     });
 

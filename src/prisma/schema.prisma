@@ -7,6 +7,20 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Priority {
+  URGENT
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum Status {
+  TO_DO
+  DONE
+  REVIEW
+  PROCESS
+}
+
 model AccountType {
   id                Int     @id @default(autoincrement())
   account_id        String  @unique
@@ -79,6 +93,8 @@ model KanbanCard {
   description    String
   categoryTitle  String
   categoryColor  String
+  priority       Priority @default(MEDIUM)
+  status         Status   @default(TO_DO)
   likes          Int      @default(0)
   kanbanColumnId       String
   kanbanColumn         KanbanColumn   @relation(fields: [kanbanColumnId], references: [id], onDelete: Cascade)

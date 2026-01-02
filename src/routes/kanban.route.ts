@@ -3,9 +3,15 @@ import { authenticateJWT } from "../middleware/jwt.middleware.ts";
 import { signature } from "../middleware/signature.middleware.ts";
 import {
   getAllKanbanBoards,
+  getBoardList,
+  getBoardById,
   getKanbanBoardById,
+  createBoard,
+  updateBoard,
+  deleteBoard,
   addColumn,
   addCard,
+  moveCard,
   updateColumn,
   updateCard,
   deleteColumn,
@@ -22,11 +28,23 @@ const router = Router();
 
 router.get("/", authenticateJWT, getAllKanbanBoards);
 
+router.get("/list", authenticateJWT, getBoardList);
+
+router.get("/board/:id", authenticateJWT, getBoardById);
+
 router.get("/:id", authenticateJWT, getKanbanBoardById);
+
+router.post("/", authenticateJWT, signature, createBoard);
+
+router.put("/:id", authenticateJWT, signature, updateBoard);
+
+router.delete("/:id", authenticateJWT, signature, deleteBoard);
 
 router.post("/column", authenticateJWT, signature, addColumn);
 
 router.post("/card", authenticateJWT, signature, addCard);
+
+router.put("/card/move", authenticateJWT, signature, moveCard);
 
 router.put("/column/:id", authenticateJWT, signature, updateColumn);
 

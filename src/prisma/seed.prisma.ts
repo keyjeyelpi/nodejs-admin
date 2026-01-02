@@ -113,6 +113,9 @@ const main = async () => {
   console.log("📝 Creating columns and cards from JSON data...");
   // Process each column from the JSON data
 
+  const priorities = ['URGENT', 'HIGH', 'MEDIUM', 'LOW'];
+  const statuses = ['TO_DO', 'DONE', 'REVIEW', 'PROCESS'];
+
   for (const columnData of kanbanData) {
     const column = await prisma.kanbanColumn.create({
       data: {
@@ -141,6 +144,8 @@ const main = async () => {
           description: description || "",
           categoryTitle: item.content.category.label,
           categoryColor: item.content.category.color,
+          priority: priorities[Math.floor(Math.random() * priorities.length)] as any,
+          status: statuses[Math.floor(Math.random() * statuses.length)] as any,
           likes: item.content.likes,
           kanbanColumnId: column.id,
         },
