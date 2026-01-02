@@ -18,6 +18,7 @@ export const getAllKanbanBoards = async (req: Request, res: Response) => {
     const page = parseInt(req.query.page as string) || undefined;
     const limit = parseInt(req.query.limit as string) || undefined;
     const skip = page && limit ? (page - 1) * limit : undefined;
+    const search = req.query.search as string | undefined;
 
     const [boards, totalCount] = await Promise.all([
       prisma.kanbanBoard.findMany({
@@ -26,6 +27,14 @@ export const getAllKanbanBoards = async (req: Request, res: Response) => {
         }),
         ...(!isUndefined(limit) && {
           take: limit,
+        }),
+        ...(search && {
+          where: {
+            name: {
+              contains: search,
+              mode: 'insensitive',
+            },
+          },
         }),
         include: {
           kanbanColumns: {
@@ -236,6 +245,14 @@ export const getKanbanBoardById = async (req: Request, res: Response) => {
                   orderBy: {
                     id: "asc",
                   },
+                  select: {
+                    id: true,
+                    text: true,
+                    author: true,
+                    createdAt: true,
+                    kanbanCardId: true,
+                    replyForKanbanCardId: true,
+                  },
                 },
               },
             },
@@ -280,7 +297,7 @@ export const getKanbanBoardById = async (req: Request, res: Response) => {
                 id: reply.id,
                 text: reply.text,
                 author: reply.author,
-                date: new Date().toISOString(), // TODO: Add date field to schema
+                date: reply.createdAt.toISOString(),
                 avatar: `https://i.pravatar.cc/150?u=${encodeURIComponent(reply.author)}`,
               }));
 
@@ -288,7 +305,7 @@ export const getKanbanBoardById = async (req: Request, res: Response) => {
               id: comment.id,
               text: comment.text,
               author: comment.author,
-              date: new Date().toISOString(), // TODO: Add date field to schema
+              date: comment.createdAt.toISOString(),
               avatar: `https://i.pravatar.cc/150?u=${encodeURIComponent(comment.author)}`,
               replies,
             };
