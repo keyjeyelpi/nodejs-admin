@@ -52,6 +52,7 @@ model User {
 
   account_type     AccountType      @relation(fields: [account_type_id], references: [account_id])
   settings         User_settings?
+  kanbanComments   KanbanComment[]
 
   @@map("users")
 }
@@ -107,9 +108,12 @@ model KanbanCard {
 model KanbanComment {
   id       String @id @default(cuid())
   text     String
-  author   String
+  user_id  String
+  user     User @relation(fields: [user_id], references: [user_id])
   kanbanCardId   String
-  replyForKanbanCardId String?
+  replyForKanbanCommentId String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
   kanbanCard     KanbanCard   @relation(fields: [kanbanCardId], references: [id], onDelete: Cascade)
 
   @@map("kanban_comments")

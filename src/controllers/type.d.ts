@@ -37,13 +37,11 @@ export interface CreateCardRequest {
 export interface CreateCommentRequest {
   kanbanCardId: string;
   text: string;
-  author: string;
 }
 
 export interface CreateReplyRequest {
   commentId: string;
   text: string;
-  author: string;
 }
 
 export interface MoveCardRequest {

@@ -16,6 +16,7 @@ export const authenticateJWT = (
   res: Response,
   next: NextFunction
 ) => {
+  console.log("[JWTMiddleware] authenticateJWT accessed for path:", req.path);
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith("Bearer "))

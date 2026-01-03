@@ -2,26 +2,49 @@ import type { Request, Response } from "express";
 import { prisma } from "../config/prisma.config.ts";
 import { toCamelCase } from "../utils/caseConverter.util.ts";
 
-export const fetchAllUsers = async (_req: Request, res: Response) => {
+export const fetchAllUsers = async (req: Request, res: Response) => {
   try {
-    const users = await prisma.user.findMany({
-      include: {
-        account_type: {
-          select: {
-            title: true,
-            is_editable: true,
-            is_deletable: true,
-            allowed_to_edit: true,
-            is_selectable: true,
-          },
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const sortOrder = (req.query.sortOrder as string) || "asc";
+    const sortBy = (req.query.sortBy as string) || "lastname";
+    const skip = (page - 1) * limit;
+
+    const [users, totalCount] = await Promise.all([
+      prisma.user.findMany({
+        skip,
+        take: limit,
+        orderBy: {
+          [sortBy]: sortOrder,
         },
-        settings: true,
-      },
-    });
+        include: {
+          account_type: {
+            select: {
+              title: true,
+              is_editable: true,
+              is_deletable: true,
+              allowed_to_edit: true,
+              is_selectable: true,
+            },
+          },
+          settings: true,
+        },
+      }),
+      prisma.user.count(),
+    ]);
 
     res.status(200).json({
       message: "",
       data: toCamelCase(users),
+      count: users.length,
+      totalCount,
+      pagination: {
+        page,
+        limit,
+        totalPages: Math.ceil(totalCount / limit),
+        hasNextPage: page < Math.ceil(totalCount / limit),
+        hasPrevPage: page > 1,
+      },
     });
   } catch (err) {
     console.error(err);
