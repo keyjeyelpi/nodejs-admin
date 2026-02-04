@@ -1,14 +1,14 @@
-import type { Request, Response } from "express";
+import type { FastifyRequest, FastifyReply } from "fastify";
 import { v4 as uuid } from "uuid";
-import { prisma } from "../config/prisma.config.ts";
-import type {
-  CreateBoardRequest,
-  CreateCardRequest,
-  CreateColumnRequest,
-  CreateCommentRequest,
-  CreateReplyRequest,
-  MoveCardRequest,
-} from "./type.d.ts";
+import { db } from "../db/index.js";
+import {
+  kanbanBoards,
+  kanbanColumns,
+  kanbanCards,
+  kanbanComments,
+  users,
+} from "../db/schema.js";
+import { eq, asc, desc, sql, and } from "drizzle-orm";
 
 // Define valid values as constants to avoid enum issues
 const VALID_PRIORITIES = ["URGENT", "HIGH", "MEDIUM", "LOW"] as const;
@@ -17,72 +17,99 @@ const VALID_STATUSES = ["TO_DO", "DONE", "REVIEW", "PROCESS"] as const;
 type Priority = (typeof VALID_PRIORITIES)[number];
 type Status = (typeof VALID_STATUSES)[number];
 
-// Interfaces for request validation
 const isUndefined = (a: unknown): a is undefined => typeof a === "undefined";
 
-export const getAllKanbanBoards = async (req: Request, res: Response) => {
+export const getAllKanbanBoards = async (req: FastifyRequest, reply: FastifyReply) => {
   console.log("[KanbanController] getAllKanbanBoards accessed");
   try {
-    const page = parseInt(req.query.page as string) || undefined;
-    const limit = parseInt(req.query.limit as string) || undefined;
-    const skip = page && limit ? (page - 1) * limit : undefined;
-    const search = req.query.search as string | undefined;
+    const query = req.query as { page?: string; limit?: string; search?: string };
+    const page = parseInt(query.page || "1");
+    const limit = parseInt(query.limit || "10");
+    const skip = (page - 1) * limit;
+    const search = query.search;
 
-    const [boards, totalCount] = await Promise.all([
-      prisma.kanbanBoard.findMany({
-        ...(!isUndefined(skip) && {
-          skip,
-        }),
-        ...(!isUndefined(limit) && {
-          take: limit,
-        }),
-        ...(search && {
-          where: {
-            name: {
-              contains: search,
-            },
-          },
-        }),
-        include: {
-          kanbanColumns: {
-            orderBy: {
-              name: "asc",
-            },
-            include: {
-              kanbanCards: {
-                orderBy: {
-                  title: "asc",
-                },
-                include: {
-                  kanbanComments: {
-                    select: {
-                      id: true,
-                      text: true,
-                      user: {
-                        select: {
-                          firstname: true,
-                          lastname: true,
-                          username: true,
-                        },
-                      },
-                      kanbanCardId: true,
-                      replyForKanbanCommentId: true,
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-        orderBy: {
-          name: "asc",
-        },
-      }),
-      prisma.kanbanBoard.count(),
-    ]);
+    // Get all boards with their columns and cards
+    const allBoards = await db.select({
+      id: kanbanBoards.id,
+      name: kanbanBoards.name,
+    })
+      .from(kanbanBoards)
+      .orderBy(asc(kanbanBoards.name));
 
-    // Transform the data to match the expected format
-    const transformedBoards = boards.map((board) => ({
+    // Get columns for each board
+    const boardsWithColumns = await Promise.all(
+      allBoards.map(async (board) => {
+        const columns = await db.select({
+          id: kanbanColumns.id,
+          name: kanbanColumns.name,
+          disableAdd: kanbanColumns.disableAdd,
+          order: kanbanColumns.order,
+        })
+          .from(kanbanColumns)
+          .where(eq(kanbanColumns.boardId, board.id))
+          .orderBy(asc(kanbanColumns.order));
+
+        // Get cards for each column
+        const columnsWithCards = await Promise.all(
+          columns.map(async (column) => {
+            const cards = await db.select({
+              id: kanbanCards.id,
+              title: kanbanCards.title,
+              description: kanbanCards.description,
+              categoryTitle: kanbanCards.categoryTitle,
+              categoryColor: kanbanCards.categoryColor,
+              priority: kanbanCards.priority,
+              status: kanbanCards.status,
+              likes: kanbanCards.likes,
+            })
+              .from(kanbanCards)
+              .where(eq(kanbanCards.kanbanColumnId, column.id))
+              .orderBy(asc(kanbanCards.title));
+
+            // Get comments for each card
+            const cardsWithComments = await Promise.all(
+              cards.map(async (card) => {
+                const comments = await db.select({
+                  id: kanbanComments.id,
+                  text: kanbanComments.text,
+                  userId: kanbanComments.userId,
+                  kanbanCardId: kanbanComments.kanbanCardId,
+                  replyForKanbanCommentId: kanbanComments.replyForKanbanCommentId,
+                  firstname: users.firstname,
+                  lastname: users.lastname,
+                  username: users.username,
+                })
+                  .from(kanbanComments)
+                  .leftJoin(users, eq(kanbanComments.userId, users.id))
+                  .where(eq(kanbanComments.kanbanCardId, card.id));
+
+                return {
+                  ...card,
+                  kanbanComments: comments,
+                };
+              })
+            );
+
+            return {
+              ...column,
+              kanbanCards: cardsWithComments,
+            };
+          })
+        );
+
+        return {
+          ...board,
+          kanbanColumns: columnsWithCards,
+        };
+      })
+    );
+
+    const totalCount = boardsWithColumns.length;
+    const startIndex = skip;
+    const endIndex = startIndex + limit;
+    const paginatedBoards = boardsWithColumns.slice(startIndex, endIndex);
+
+    const transformedBoards = paginatedBoards.map((board) => ({
       id: board.id,
       name: board.name,
       kanbanColumns: board.kanbanColumns.map((column) => ({
@@ -110,226 +137,233 @@ export const getAllKanbanBoards = async (req: Request, res: Response) => {
       })),
     }));
 
-    res.status(200).json({
-      message: `Retrieved ${boards.length} kanban boards`,
+    reply.status(200).send({
+      message: `Retrieved ${transformedBoards.length} kanban boards`,
       data: transformedBoards,
-      count: boards.length,
+      count: transformedBoards.length,
       totalCount,
-      ...(page &&
-        limit && {
-          pagination: {
-            page,
-            limit,
-            totalPages: Math.ceil(totalCount / limit),
-            hasNextPage: page < Math.ceil(totalCount / limit),
-            hasPrevPage: page > 1,
-          },
-        }),
+      pagination: {
+        page,
+        limit,
+        totalPages: Math.ceil(totalCount / limit),
+        hasNextPage: page < Math.ceil(totalCount / limit),
+        hasPrevPage: page > 1,
+      },
     });
   } catch (err) {
     console.error("[KanbanController] Error in getAllKanbanBoards:", err);
-    res.status(500).json({
+    reply.status(500).send({
       message: "Server error",
       error: err,
     });
   }
 };
 
-export const getBoardList = async (req: Request, res: Response) => {
+export const getBoardList = async (req: FastifyRequest, reply: FastifyReply) => {
   console.log("[KanbanController] getBoardList accessed");
   try {
-    const page = parseInt(req.query.page as string) || undefined;
-    const limit = parseInt(req.query.limit as string) || undefined;
-    const skip = page && limit ? (page - 1) * limit : undefined;
+    const query = req.query as { page?: string; limit?: string };
+    const page = parseInt(query.page || "1");
+    const limit = parseInt(query.limit || "10");
+    const skip = (page - 1) * limit;
 
-    const [boards, totalCount] = await Promise.all([
-      prisma.kanbanBoard.findMany({
-        ...(!isUndefined(skip) && {
-          skip,
-        }),
-        ...(!isUndefined(limit) && {
-          take: limit,
-        }),
-        select: {
-          id: true,
-          name: true,
-        },
-        orderBy: {
-          name: "asc",
-        },
-      }),
-      prisma.kanbanBoard.count(),
-    ]);
+    const allBoards = await db.select({
+      id: kanbanBoards.id,
+      name: kanbanBoards.name,
+    })
+      .from(kanbanBoards)
+      .orderBy(asc(kanbanBoards.name));
 
-    res.status(200).json({
+    const totalCount = allBoards.length;
+    const boards = allBoards.slice(skip, skip + limit);
+
+    reply.status(200).send({
       message: `Retrieved ${boards.length} boards`,
       data: boards,
       count: boards.length,
       totalCount,
-      ...(page &&
-        limit && {
-          pagination: {
-            page,
-            limit,
-            totalPages: Math.ceil(totalCount / limit),
-            hasNextPage: page < Math.ceil(totalCount / limit),
-            hasPrevPage: page > 1,
-          },
-        }),
+      pagination: {
+        page,
+        limit,
+        totalPages: Math.ceil(totalCount / limit),
+        hasNextPage: page < Math.ceil(totalCount / limit),
+        hasPrevPage: page > 1,
+      },
     });
   } catch (err) {
     console.error("[KanbanController] Error in getBoardList:", err);
-    res.status(500).json({
+    reply.status(500).send({
       message: "Server error",
       error: err,
     });
   }
 };
 
-export const getBoardById = async (req: Request, res: Response) => {
+export const getBoardById = async (
+  req: FastifyRequest<{ Params: { id: string } }>,
+  reply: FastifyReply
+) => {
   console.log("[KanbanController] getBoardById accessed");
   const { id } = req.params;
 
   if (!id)
-    return res.status(400).json({
+    return reply.status(400).send({
       message: "Board id is required",
     });
 
   try {
-    const board = await prisma.kanbanBoard.findUnique({
-      where: {
-        id,
-      },
-      select: {
-        id: true,
-        name: true,
-      },
-    });
+    const board = await db.select({
+      id: kanbanBoards.id,
+      name: kanbanBoards.name,
+    })
+      .from(kanbanBoards)
+      .where(eq(kanbanBoards.id, id))
+      .then(rows => rows[0]);
 
     if (!board)
-      return res.status(404).json({
+      return reply.status(404).send({
         message: "Board not found",
       });
 
-    res.status(200).json({
+    reply.status(200).send({
       message: `Retrieved board with ID ${id}`,
       data: board,
     });
   } catch (err) {
     console.error("[KanbanController] Error in getBoardById:", err);
-    res.status(500).json({
+    reply.status(500).send({
       message: "Server error",
       error: err,
     });
   }
 };
 
-export const getKanbanBoardById = async (req: Request, res: Response) => {
+export const getKanbanBoardById = async (req: FastifyRequest, reply: FastifyReply) => {
   console.log("[KanbanController] getKanbanBoardById accessed");
-  const { id } = req.params;
-  const page = parseInt(req.query.page as string) || undefined;
-  const limit = parseInt(req.query.limit as string) || undefined;
-  const skip = page && limit ? (page - 1) * limit : undefined;
+  const params = req.params as { id?: string };
+  const { id } = params;
+  const query = req.query as { page?: string; limit?: string };
+  const page = parseInt(query.page || "1");
+  const limit = parseInt(query.limit || "10");
+  const skip = (page - 1) * limit;
 
   if (!id)
-    return res.status(400).json({
+    return reply.status(400).send({
       message: "Board id is required",
     });
 
   try {
-    const board = await prisma.kanbanBoard.findUnique({
-      where: {
-        id,
-      },
-      include: {
-        kanbanColumns: {
-          orderBy: {
-            order: "asc",
-          },
-          include: {
-            kanbanCards: {
-              ...(!isUndefined(skip) && {
-                skip,
-              }),
-              ...(!isUndefined(limit) && {
-                take: limit,
-              }),
-              orderBy: {
-                title: "asc",
-              },
-              include: {
-                kanbanComments: {
-                  orderBy: {
-                    id: "asc",
-                  },
-                  select: {
-                    id: true,
-                    text: true,
-                    user: {
-                      select: {
-                        firstname: true,
-                        lastname: true,
-                        username: true,
-                      },
-                    },
-                    created_at: true,
-                    kanbanCardId: true,
-                    replyForKanbanCommentId: true,
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    });
+    const board = await db.select({
+      id: kanbanBoards.id,
+      name: kanbanBoards.name,
+    })
+      .from(kanbanBoards)
+      .where(eq(kanbanBoards.id, id))
+      .then(rows => rows[0]);
 
     if (!board)
-      return res.status(404).json({
+      return reply.status(404).send({
         message: "Kanban board not found",
       });
 
-    // Get total card count for pagination
-    const totalCardCount = await prisma.kanbanCard.count({
-      where: {
-        kanbanColumn: {
-          boardId: id,
-        },
-      },
-    });
+    const columns = await db.select({
+      id: kanbanColumns.id,
+      name: kanbanColumns.name,
+      disableAdd: kanbanColumns.disableAdd,
+      order: kanbanColumns.order,
+    })
+      .from(kanbanColumns)
+      .where(eq(kanbanColumns.boardId, id))
+      .orderBy(asc(kanbanColumns.order));
 
-    // Transform the data to match the expected format with nested replies
+    // Count total cards
+    const totalCardCountResult = await db.select({
+      count: sql<number>`count(*)`,
+    })
+      .from(kanbanCards)
+      .innerJoin(kanbanColumns, eq(kanbanCards.kanbanColumnId, kanbanColumns.id))
+      .where(eq(kanbanColumns.boardId, id));
+    const totalCardCount = totalCardCountResult[0]?.count || 0;
+
+    const columnsWithCards = await Promise.all(
+      columns.map(async (column) => {
+        const cards = await db.select({
+          id: kanbanCards.id,
+          title: kanbanCards.title,
+          description: kanbanCards.description,
+          categoryTitle: kanbanCards.categoryTitle,
+          categoryColor: kanbanCards.categoryColor,
+          priority: kanbanCards.priority,
+          status: kanbanCards.status,
+          likes: kanbanCards.likes,
+        })
+          .from(kanbanCards)
+          .where(eq(kanbanCards.kanbanColumnId, column.id))
+          .orderBy(asc(kanbanCards.title))
+          .limit(limit)
+          .offset(skip);
+
+        const cardsWithComments = await Promise.all(
+          cards.map(async (card) => {
+            const comments = await db.select({
+              id: kanbanComments.id,
+              text: kanbanComments.text,
+              userId: kanbanComments.userId,
+              kanbanCardId: kanbanComments.kanbanCardId,
+              replyForKanbanCommentId: kanbanComments.replyForKanbanCommentId,
+              createdAt: kanbanComments.createdAt,
+              firstname: users.firstname,
+              lastname: users.lastname,
+              username: users.username,
+            })
+              .from(kanbanComments)
+              .leftJoin(users, eq(kanbanComments.userId, users.id))
+              .where(eq(kanbanComments.kanbanCardId, card.id))
+              .orderBy(asc(kanbanComments.id));
+
+            return {
+              ...card,
+              kanbanComments: comments,
+            };
+          })
+        );
+
+        return {
+          ...column,
+          kanbanCards: cardsWithComments,
+        };
+      })
+    );
+
     const transformedBoard = {
       id: board.id,
       name: board.name,
-      kanbanColumns: board.kanbanColumns.map((column) => ({
+      kanbanColumns: columnsWithCards.map((column) => ({
         id: column.id,
         name: column.name,
         disableAdd: column.disableAdd,
         items: column.kanbanCards.map((card) => {
-          // Get top-level comments (no replyForKanbanCommentId)
           const topLevelComments = card.kanbanComments.filter(
             (c) => !c.replyForKanbanCommentId
           );
 
-          // Get replies for each comment
           const commentsWithReplies = topLevelComments.map((comment) => {
             const replies = card.kanbanComments
               .filter((c) => c.replyForKanbanCommentId === comment.id)
               .map((reply) => ({
                 id: reply.id,
                 text: reply.text,
-                author: `${reply.user.firstname} ${reply.user.lastname}`,
-                date: reply.created_at.toISOString(),
-                avatar: `https://i.pravatar.cc/150?u=${encodeURIComponent(reply.user.username)}`,
+                author: `${reply.firstname} ${reply.lastname}`,
+                date: reply.createdAt?.toISOString() || "",
+                avatar: `https://i.pravatar.cc/150?u=${encodeURIComponent(reply.username || "")}`,
               }));
 
             return {
               id: comment.id,
               text: comment.text,
-              author: `${comment.user.firstname} ${comment.user.lastname}`,
-              date: comment.created_at.toISOString(),
-              avatar: `https://i.pravatar.cc/150?u=${encodeURIComponent(comment.user.username)}`,
+              author: `${comment.firstname} ${comment.lastname}`,
+              date: comment.createdAt?.toISOString() || "",
+              avatar: `https://i.pravatar.cc/150?u=${encodeURIComponent(comment.username || "")}`,
               replies,
             };
           });
@@ -354,896 +388,721 @@ export const getKanbanBoardById = async (req: Request, res: Response) => {
       })),
     };
 
-    res.status(200).json({
+    reply.status(200).send({
       message: `Get kanban board with ID ${id}`,
       data: transformedBoard,
-      ...(page &&
-        limit && {
-          pagination: {
-            page,
-            limit,
-            totalCards: totalCardCount,
-            totalPages: Math.ceil(totalCardCount / limit),
-            hasNextPage: page < Math.ceil(totalCardCount / limit),
-            hasPrevPage: page > 1,
-          },
-        }),
+      pagination: {
+        page,
+        limit,
+        totalCards: totalCardCount,
+        totalPages: Math.ceil(totalCardCount / limit),
+        hasNextPage: page < Math.ceil(totalCardCount / limit),
+        hasPrevPage: page > 1,
+      },
     });
   } catch (err) {
     console.error("[KanbanController] Error in getKanbanBoardById:", err);
-    res.status(500).json({
+    reply.status(500).send({
       message: "Server error",
       error: err,
     });
   }
 };
 
-export const createBoard = async (req: Request, res: Response) => {
+export const createBoard = async (
+  req: FastifyRequest<{ Body: { name?: string } }>,
+  reply: FastifyReply
+) => {
   console.log("[KanbanController] createBoard accessed");
-  const { name }: CreateBoardRequest = req.body;
+  const { name } = req.body || {};
 
   try {
     if (!name?.trim())
-      return res.status(400).json({
+      return reply.status(400).send({
         message: "Board name is required",
       });
 
-    const board = await prisma.kanbanBoard.create({
-      data: {
-        id: uuid(),
-        name: name.trim(),
-      },
-      include: {
-        kanbanColumns: true,
-      },
+    const boardId = uuid();
+    await db.insert(kanbanBoards).values({
+      id: boardId,
+      name: name.trim(),
     });
 
-    res.status(201).json({
+    const newBoard = await db.select()
+      .from(kanbanBoards)
+      .where(eq(kanbanBoards.id, boardId))
+      .then(rows => rows[0]);
+
+    reply.status(201).send({
       message: "Board created successfully",
-      data: board,
+      data: newBoard,
     });
   } catch (err) {
     console.error("[KanbanController] Error in createBoard:", err);
-    res.status(500).json({
+    reply.status(500).send({
       message: "Server error",
       error: err,
     });
   }
 };
 
-export const updateBoard = async (req: Request, res: Response) => {
+export const updateBoard = async (
+  req: FastifyRequest<{ Params: { id: string }; Body: { name?: string } }>,
+  reply: FastifyReply
+) => {
   console.log("[KanbanController] updateBoard accessed");
-  const { body, params } = req;
-  const { id } = params;
-  const {
-    name,
-  }: {
-    name: string;
-  } = body;
+  const { id } = req.params;
+  const { name } = req.body || {};
 
   try {
     if (!id)
-      return res.status(400).json({
+      return reply.status(400).send({
         message: "Board id is required",
       });
 
     if (!name?.trim())
-      return res.status(400).json({
+      return reply.status(400).send({
         message: "Board name is required",
       });
 
-    const updatedBoard = await prisma.kanbanBoard.update({
-      where: {
-        id,
-      },
-      data: {
-        name: name.trim(),
-      },
-      include: {
-        kanbanColumns: {
-          include: {
-            kanbanCards: {
-              include: {
-                kanbanComments: true,
-              },
-            },
-          },
-        },
-      },
-    });
+    await db.update(kanbanBoards)
+      .set({ name: name.trim() })
+      .where(eq(kanbanBoards.id, id));
 
-    res.status(200).json({
-      message: `Board with ID ${id} updated`,
-      data: updatedBoard,
-    });
-  } catch (err: any) {
-    console.error("[KanbanController] Error in updateBoard:", err);
+    const updatedBoard = await db.select()
+      .from(kanbanBoards)
+      .where(eq(kanbanBoards.id, id))
+      .then(rows => rows[0]);
 
-    if (err.code === "P2025")
-      return res.status(404).json({
+    if (!updatedBoard)
+      return reply.status(404).send({
         message: "Board not found",
       });
 
-    res.status(500).json({
+    reply.status(200).send({
+      message: `Board with ID ${id} updated`,
+      data: updatedBoard,
+    });
+  } catch (err: unknown) {
+    console.error("[KanbanController] Error in updateBoard:", err);
+
+    reply.status(500).send({
       message: "Server error",
       error: err,
     });
   }
 };
 
-export const deleteBoard = async (req: Request, res: Response) => {
+export const deleteBoard = async (
+  req: FastifyRequest<{ Params: { id: string } }>,
+  reply: FastifyReply
+) => {
   console.log("[KanbanController] deleteBoard accessed");
   const { id } = req.params;
 
   try {
     if (!id)
-      return res.status(400).json({
+      return reply.status(400).send({
         message: "Board id is required",
       });
 
-    // Check if board exists
-    const existingBoard = await prisma.kanbanBoard.findUnique({
-      where: {
-        id,
-      },
-    });
+    const existingBoard = await db.select()
+      .from(kanbanBoards)
+      .where(eq(kanbanBoards.id, id))
+      .then(rows => rows[0]);
 
     if (!existingBoard)
-      return res.status(404).json({
+      return reply.status(404).send({
         message: "Board not found",
       });
 
-    await prisma.kanbanBoard.delete({
-      where: {
-        id,
-      },
-    });
+    await db.delete(kanbanBoards)
+      .where(eq(kanbanBoards.id, id));
 
-    res.status(200).json({
+    reply.status(200).send({
       message: `Board with ID ${id} deleted`,
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("[KanbanController] Error in deleteBoard:", err);
-    res.status(500).json({
+    reply.status(500).send({
       message: "Server error",
       error: err,
     });
   }
 };
 
-export const addColumn = async (req: Request, res: Response) => {
+export const addColumn = async (
+  req: FastifyRequest<{ Body: { boardId?: string; name?: string; disableAdd?: boolean; order?: number } }>,
+  reply: FastifyReply
+) => {
   console.log("[KanbanController] addColumn accessed");
-  const { boardId, name, disableAdd, order }: CreateColumnRequest = req.body;
+  const { boardId, name, disableAdd, order } = req.body || {};
 
   try {
     if (!boardId?.trim() || !name?.trim())
-      return res.status(400).json({
+      return reply.status(400).send({
         message: "boardId and name are required",
       });
 
-    // Check if board exists
-    const boardExists = await prisma.kanbanBoard.findUnique({
-      where: {
-        id: boardId,
-      },
+    const columnId = uuid();
+    await db.insert(kanbanColumns).values({
+      id: columnId,
+      name: name.trim(),
+      boardId: boardId,
+      disableAdd: disableAdd || false,
+      order: order || 0,
     });
 
-    if (!boardExists)
-      return res.status(404).json({
-        message: "Board not found",
-      });
+    const newColumn = await db.select()
+      .from(kanbanColumns)
+      .where(eq(kanbanColumns.id, columnId))
+      .then(rows => rows[0]);
 
-    const column = await prisma.kanbanColumn.create({
-      data: {
-        id: uuid(),
-        name: name.trim(),
-        disableAdd: disableAdd || false,
-        order: order || 0,
-        boardId,
-      },
-      include: {
-        kanbanCards: true,
-      },
-    });
-
-    res.status(201).json({
+    reply.status(201).send({
       message: "Column added successfully",
-      data: column,
+      data: newColumn,
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("[KanbanController] Error in addColumn:", err);
-
-    if (err.code === "P2003")
-      return res.status(400).json({
-        message: "Invalid board ID",
-      });
-
-    res.status(500).json({
+    reply.status(500).send({
       message: "Server error",
       error: err,
     });
   }
 };
 
-export const addCard = async (req: Request, res: Response) => {
-  console.log("[KanbanController] addCard accessed");
-  const {
-    kanbanColumnId,
-    title,
-    description,
-    categoryTitle,
-    categoryColor,
-    priority,
-    status,
-  }: CreateCardRequest = req.body;
-
-  try {
-    if (
-      !kanbanColumnId ||
-      typeof kanbanColumnId !== "string" ||
-      !kanbanColumnId.trim() ||
-      !title ||
-      typeof title !== "string" ||
-      !title.trim()
-    )
-      return res.status(400).json({
-        message: "kanbanColumnId and title are required and must be strings",
-      });
-
-    // Ensure priority and status are strings if provided
-    const stringPriority = typeof priority === "string" ? priority : undefined;
-    const stringStatus = typeof status === "string" ? status : undefined;
-
-    // Validate priority
-    const validPriorities = VALID_PRIORITIES;
-    const normalizedPriority =
-      stringPriority && validPriorities.includes(stringPriority as Priority)
-        ? stringPriority
-        : "MEDIUM";
-
-    // Validate status
-    const validStatuses = VALID_STATUSES;
-    const normalizedStatus =
-      stringStatus && validStatuses.includes(stringStatus as Status)
-        ? stringStatus
-        : "TO_DO";
-
-    // Check if column exists and is not disabled for adding
-    const column = await prisma.kanbanColumn.findUnique({
-      where: {
-        id: kanbanColumnId,
-      },
-    });
-
-    if (!column)
-      return res.status(404).json({
-        message: "Column not found",
-      });
-
-    if (column.disableAdd)
-      return res.status(400).json({
-        message: "Adding cards is disabled for this column",
-      });
-
-    const card = await prisma.kanbanCard.create({
-      data: {
-        id: uuid(),
-        title: title.trim(),
-        description: description?.trim() || "",
-        categoryTitle: categoryTitle?.trim() || "",
-        categoryColor: categoryColor?.trim() || "",
-        priority: normalizedPriority,
-        status: normalizedStatus,
-        kanbanColumnId,
-      },
-      include: {
-        kanbanComments: true,
-      },
-    });
-
-    res.status(201).json({
-      message: "Card added successfully",
-      data: card,
-    });
-  } catch (err: any) {
-    console.error("[KanbanController] Error in addCard:", err);
-
-    if (err.code === "P2003")
-      return res.status(400).json({
-        message: "Invalid column ID",
-      });
-
-    res.status(500).json({
-      message: "Server error",
-      error: err,
-    });
-  }
-};
-
-export const moveCard = async (req: Request, res: Response) => {
-  console.log("[KanbanController] moveCard accessed");
-  const { cardId, targetColumnId }: MoveCardRequest = req.body;
-
-  try {
-    if (!cardId?.trim() || !targetColumnId?.trim())
-      return res.status(400).json({
-        message: "cardId and targetColumnId are required",
-      });
-
-    // Check if card exists
-    const card = await prisma.kanbanCard.findUnique({
-      where: {
-        id: cardId,
-      },
-    });
-
-    if (!card)
-      return res.status(404).json({
-        message: "Card not found",
-      });
-
-    // Check if target column exists
-    const targetColumn = await prisma.kanbanColumn.findUnique({
-      where: {
-        id: targetColumnId,
-      },
-    });
-
-    if (!targetColumn)
-      return res.status(404).json({
-        message: "Target column not found",
-      });
-
-    const updatedCard = await prisma.kanbanCard.update({
-      where: {
-        id: cardId,
-      },
-      data: {
-        kanbanColumnId: targetColumnId,
-      },
-      include: {
-        kanbanColumn: true,
-        kanbanComments: true,
-      },
-    });
-
-    res.status(200).json({
-      message: "Card moved successfully",
-      data: updatedCard,
-    });
-  } catch (err: any) {
-    console.error("[KanbanController] Error in moveCard:", err);
-    res.status(500).json({
-      message: "Server error",
-      error: err,
-    });
-  }
-};
-
-export const updateColumn = async (req: Request, res: Response) => {
+export const updateColumn = async (
+  req: FastifyRequest<{ Params: { id: string }; Body: { name?: string; disableAdd?: boolean; order?: number } }>,
+  reply: FastifyReply
+) => {
   console.log("[KanbanController] updateColumn accessed");
-  const { body, params } = req;
-  const { id } = params;
-  const { name, disableAdd, order } = body;
+  const { id } = req.params;
+  const { name, disableAdd, order } = req.body || {};
 
   try {
     if (!id)
-      return res.status(400).json({
-        message: "id is required",
+      return reply.status(400).send({
+        message: "Column id is required",
       });
 
-    const updatedColumn = await prisma.kanbanColumn.update({
-      where: {
-        id,
-      },
-      data: {
-        name,
-        disableAdd,
-        order,
-      },
-    });
+    const updateData: Record<string, unknown> = {};
+    if (name !== undefined) updateData.name = name;
+    if (disableAdd !== undefined) updateData.disableAdd = disableAdd;
+    if (order !== undefined) updateData.order = order;
 
-    res.status(200).json({
+    await db.update(kanbanColumns)
+      .set(updateData)
+      .where(eq(kanbanColumns.id, id));
+
+    const updatedColumn = await db.select()
+      .from(kanbanColumns)
+      .where(eq(kanbanColumns.id, id))
+      .then(rows => rows[0]);
+
+    if (!updatedColumn)
+      return reply.status(404).send({
+        message: "Column not found",
+      });
+
+    reply.status(200).send({
       message: `Column with ID ${id} updated`,
       data: updatedColumn,
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("[KanbanController] Error in updateColumn:", err);
-
-    if (err.code === "P2025")
-      return res.status(404).json({
-        message: "Column not found",
-      });
-
-    res.status(500).json({
+    reply.status(500).send({
       message: "Server error",
       error: err,
     });
   }
 };
 
-export const updateCard = async (req: Request, res: Response) => {
-  console.log("[KanbanController] updateCard accessed");
-  const { body, params } = req;
-  const { id } = params;
-  const {
-    title,
-    description,
-    categoryTitle,
-    categoryColor,
-    likes,
-    priority,
-    status,
-  } = body;
-
-  try {
-    if (!id)
-      return res.status(400).json({
-        message: "id is required",
-      });
-
-    // Validate priority
-    const validPriorities = VALID_PRIORITIES;
-    const stringPriority = typeof priority === "string" ? priority : undefined;
-    const normalizedPriority =
-      stringPriority && validPriorities.includes(stringPriority as Priority)
-        ? stringPriority
-        : undefined;
-
-    // Validate status
-    const validStatuses = VALID_STATUSES;
-    const stringStatus = typeof status === "string" ? status : undefined;
-    const normalizedStatus =
-      stringStatus && validStatuses.includes(stringStatus as Status)
-        ? stringStatus
-        : undefined;
-
-    // Validate likes
-    const normalizedLikes =
-      typeof likes === "number" && likes >= 0 ? likes : undefined;
-
-    const updateData: any = {};
-    if (title !== undefined) updateData.title = title;
-    if (description !== undefined) updateData.description = description;
-    if (categoryTitle !== undefined) updateData.categoryTitle = categoryTitle;
-    if (categoryColor !== undefined) updateData.categoryColor = categoryColor;
-    if (normalizedLikes !== undefined) updateData.likes = normalizedLikes;
-    if (normalizedPriority !== undefined)
-      updateData.priority = normalizedPriority;
-    if (normalizedStatus !== undefined) updateData.status = normalizedStatus;
-
-    const updatedCard = await prisma.kanbanCard.update({
-      where: {
-        id,
-      },
-      data: updateData,
-    });
-
-    res.status(200).json({
-      message: `Card with ID ${id} updated`,
-      data: updatedCard,
-    });
-  } catch (err: any) {
-    console.error("[KanbanController] Error in updateCard:", err);
-
-    if (err.code === "P2025")
-      return res.status(404).json({
-        message: "Card not found",
-      });
-
-    res.status(500).json({
-      message: "Server error",
-      error: err,
-    });
-  }
-};
-
-export const deleteColumn = async (req: Request, res: Response) => {
+export const deleteColumn = async (
+  req: FastifyRequest<{ Params: { id: string } }>,
+  reply: FastifyReply
+) => {
   console.log("[KanbanController] deleteColumn accessed");
   const { id } = req.params;
 
   try {
     if (!id)
-      return res.status(400).json({
-        message: "id is required",
+      return reply.status(400).send({
+        message: "Column id is required",
       });
 
-    await prisma.kanbanColumn.delete({
-      where: {
-        id,
-      },
-    });
+    const existingColumn = await db.select()
+      .from(kanbanColumns)
+      .where(eq(kanbanColumns.id, id))
+      .then(rows => rows[0]);
 
-    res.status(200).json({
-      message: `Column with ID ${id} deleted`,
-    });
-  } catch (err: any) {
-    console.error("[KanbanController] Error in deleteColumn:", err);
-
-    if (err.code === "P2025")
-      return res.status(404).json({
+    if (!existingColumn)
+      return reply.status(404).send({
         message: "Column not found",
       });
 
-    res.status(500).json({
+    await db.delete(kanbanColumns)
+      .where(eq(kanbanColumns.id, id));
+
+    reply.status(200).send({
+      message: `Column with ID ${id} deleted`,
+    });
+  } catch (err) {
+    console.error("[KanbanController] Error in deleteColumn:", err);
+    reply.status(500).send({
       message: "Server error",
       error: err,
     });
   }
 };
 
-export const deleteCard = async (req: Request, res: Response) => {
+export const addCard = async (
+  req: FastifyRequest<{
+    Body: {
+      columnId?: string;
+      title?: string;
+      description?: string;
+      categoryTitle?: string;
+      categoryColor?: string;
+      priority?: string;
+      status?: string;
+    }
+  }>,
+  reply: FastifyReply
+) => {
+  console.log("[KanbanController] createCard accessed");
+  const { columnId, title, description, categoryTitle, categoryColor, priority, status } = req.body || {};
+
+  try {
+    if (!columnId?.trim() || !title?.trim())
+      return reply.status(400).send({
+        message: "columnId and title are required",
+      });
+
+    const cardId = uuid();
+    await db.insert(kanbanCards).values({
+      id: cardId,
+      title: title.trim(),
+      description: description || "",
+      categoryTitle: categoryTitle || "",
+      categoryColor: categoryColor || "#000000",
+      priority: (priority as Priority) || "MEDIUM",
+      status: (status as Status) || "TO_DO",
+      kanbanColumnId: columnId,
+    });
+
+    const newCard = await db.select()
+      .from(kanbanCards)
+      .where(eq(kanbanCards.id, cardId))
+      .then(rows => rows[0]);
+
+    reply.status(201).send({
+      message: "Card created successfully",
+      data: newCard,
+    });
+  } catch (err) {
+    console.error("[KanbanController] Error in createCard:", err);
+    reply.status(500).send({
+      message: "Server error",
+      error: err,
+    });
+  }
+};
+
+export const updateCard = async (
+  req: FastifyRequest<{
+    Params: { id: string };
+    Body: {
+      title?: string;
+      description?: string;
+      categoryTitle?: string;
+      categoryColor?: string;
+      priority?: string;
+      status?: string;
+      likes?: number;
+    }
+  }>,
+  reply: FastifyReply
+) => {
+  console.log("[KanbanController] updateCard accessed");
+  const { id } = req.params;
+  const { title, description, categoryTitle, categoryColor, priority, status, likes } = req.body || {};
+
+  try {
+    if (!id)
+      return reply.status(400).send({
+        message: "Card id is required",
+      });
+
+    const updateData: Record<string, unknown> = {};
+    if (title !== undefined) updateData.title = title;
+    if (description !== undefined) updateData.description = description;
+    if (categoryTitle !== undefined) updateData.categoryTitle = categoryTitle;
+    if (categoryColor !== undefined) updateData.categoryColor = categoryColor;
+    if (priority !== undefined) updateData.priority = priority;
+    if (status !== undefined) updateData.status = status;
+    if (likes !== undefined) updateData.likes = likes;
+
+    await db.update(kanbanCards)
+      .set(updateData)
+      .where(eq(kanbanCards.id, id));
+
+    const updatedCard = await db.select()
+      .from(kanbanCards)
+      .where(eq(kanbanCards.id, id))
+      .then(rows => rows[0]);
+
+    if (!updatedCard)
+      return reply.status(404).send({
+        message: "Card not found",
+      });
+
+    reply.status(200).send({
+      message: `Card with ID ${id} updated`,
+      data: updatedCard,
+    });
+  } catch (err) {
+    console.error("[KanbanController] Error in updateCard:", err);
+    reply.status(500).send({
+      message: "Server error",
+      error: err,
+    });
+  }
+};
+
+export const deleteCard = async (
+  req: FastifyRequest<{ Params: { id: string } }>,
+  reply: FastifyReply
+) => {
   console.log("[KanbanController] deleteCard accessed");
   const { id } = req.params;
 
   try {
     if (!id)
-      return res.status(400).json({
-        message: "id is required",
+      return reply.status(400).send({
+        message: "Card id is required",
       });
 
-    // Check if card exists
-    const existingCard = await prisma.kanbanCard.findUnique({
-      where: {
-        id,
-      },
-    });
+    const existingCard = await db.select()
+      .from(kanbanCards)
+      .where(eq(kanbanCards.id, id))
+      .then(rows => rows[0]);
 
     if (!existingCard)
-      return res.status(404).json({
+      return reply.status(404).send({
         message: "Card not found",
       });
 
-    await prisma.kanbanCard.delete({
-      where: {
-        id,
-      },
-    });
+    await db.delete(kanbanCards)
+      .where(eq(kanbanCards.id, id));
 
-    res.status(200).json({
+    reply.status(200).send({
       message: `Card with ID ${id} deleted`,
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("[KanbanController] Error in deleteCard:", err);
-    res.status(500).json({
+    reply.status(500).send({
       message: "Server error",
       error: err,
     });
   }
 };
 
-export const addComment = async (req: Request, res: Response) => {
-  console.log("[KanbanController] addComment accessed");
-  const { kanbanCardId, text }: CreateCommentRequest = req.body;
+export const addComment = async (
+  req: FastifyRequest<{
+    Body: {
+      cardId?: string;
+      text?: string;
+      userId?: string;
+      replyForCommentId?: string;
+    }
+  }>,
+  reply: FastifyReply
+) => {
+  console.log("[KanbanController] createComment accessed");
+  const { cardId, text, userId, replyForCommentId } = req.body || {};
 
   try {
-    if (!kanbanCardId?.trim() || !text?.trim())
-      return res.status(400).json({
-        message: "kanbanCardId and text are required",
+    if (!cardId?.trim() || !text?.trim() || !userId?.trim())
+      return reply.status(400).send({
+        message: "cardId, text, and userId are required",
       });
 
-    // Get the user
-    const user = await prisma.user.findUnique({
-      where: {
-        user_id: (req as any).user.sub,
-      },
+    const commentId = uuid();
+    await db.insert(kanbanComments).values({
+      id: commentId,
+      text: text.trim(),
+      userId: userId,
+      kanbanCardId: cardId,
+      replyForKanbanCommentId: replyForCommentId || null,
     });
 
-    if (!user)
-      return res.status(401).json({
-        message: "User not found",
-      });
+    const newComment = await db.select()
+      .from(kanbanComments)
+      .where(eq(kanbanComments.id, commentId))
+      .then(rows => rows[0]);
 
-    // Check if card exists
-    const cardExists = await prisma.kanbanCard.findUnique({
-      where: {
-        id: kanbanCardId,
-      },
+    reply.status(201).send({
+      message: "Comment created successfully",
+      data: newComment,
     });
-
-    if (!cardExists)
-      return res.status(404).json({
-        message: "Card not found",
-      });
-
-    const comment = await prisma.kanbanComment.create({
-      data: {
-        id: uuid(),
-        text: text.trim(),
-        user_id: user.user_id,
-        kanbanCardId,
-      },
-    });
-
-    res.status(201).json({
-      message: "Comment added successfully",
-      data: comment,
-    });
-  } catch (err: any) {
-    console.error("[KanbanController] Error in addComment:", err);
-
-    if (err.code === "P2003")
-      return res.status(400).json({
-        message: "Invalid card ID",
-      });
-
-    res.status(500).json({
+  } catch (err) {
+    console.error("[KanbanController] Error in createComment:", err);
+    reply.status(500).send({
       message: "Server error",
       error: err,
     });
   }
 };
 
-export const updateComment = async (req: Request, res: Response) => {
-  console.log("[KanbanController] updateComment accessed");
-  const { body, params } = req;
-  const { id } = params;
-  const {
-    text,
-  }: {
-    text: string;
-  } = body;
-
-  try {
-    if (!id)
-      return res.status(400).json({
-        message: "Comment id is required",
-      });
-
-    if (!text?.trim())
-      return res.status(400).json({
-        message: "Comment text is required",
-      });
-
-    const updatedComment = await prisma.kanbanComment.update({
-      where: {
-        id,
-      },
-      data: {
-        text: text.trim(),
-      },
-    });
-
-    res.status(200).json({
-      message: `Comment with ID ${id} updated`,
-      data: updatedComment,
-    });
-  } catch (err: any) {
-    console.error("[KanbanController] Error in updateComment:", err);
-
-    if (err.code === "P2025")
-      return res.status(404).json({
-        message: "Comment not found",
-      });
-
-    res.status(500).json({
-      message: "Server error",
-      error: err,
-    });
-  }
-};
-
-export const deleteComment = async (req: Request, res: Response) => {
+export const deleteComment = async (
+  req: FastifyRequest<{ Params: { id: string } }>,
+  reply: FastifyReply
+) => {
   console.log("[KanbanController] deleteComment accessed");
   const { id } = req.params;
 
   try {
     if (!id)
-      return res.status(400).json({
+      return reply.status(400).send({
         message: "Comment id is required",
       });
 
-    // Check if comment exists
-    const existingComment = await prisma.kanbanComment.findUnique({
-      where: {
-        id,
-      },
-    });
+    const existingComment = await db.select()
+      .from(kanbanComments)
+      .where(eq(kanbanComments.id, id))
+      .then(rows => rows[0]);
 
     if (!existingComment)
-      return res.status(404).json({
+      return reply.status(404).send({
         message: "Comment not found",
       });
 
-    // Delete all replies to this comment first
-    await prisma.kanbanComment.deleteMany({
-      where: {
-        replyForKanbanCommentId: id,
-      },
-    });
+    await db.delete(kanbanComments)
+      .where(eq(kanbanComments.id, id));
 
-    await prisma.kanbanComment.delete({
-      where: {
-        id,
-      },
-    });
-
-    res.status(200).json({
+    reply.status(200).send({
       message: `Comment with ID ${id} deleted`,
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("[KanbanController] Error in deleteComment:", err);
-    res.status(500).json({
+    reply.status(500).send({
       message: "Server error",
       error: err,
     });
   }
 };
 
-export const addReply = async (req: Request, res: Response) => {
-  console.log("[KanbanController] addReply accessed");
-  const { commentId, text }: CreateReplyRequest = req.body;
-
-  try {
-    if (!commentId?.trim() || !text?.trim())
-      return res.status(400).json({
-        message: "commentId and text are required",
-      });
-
-    // Get the user
-    const user = await prisma.user.findUnique({
-      where: {
-        user_id: (req as any).user.sub,
-      },
-    });
-
-    if (!user)
-      return res.status(401).json({
-        message: "User not found",
-      });
-
-    // Check if parent comment exists
-    const parentComment = await prisma.kanbanComment.findUnique({
-      where: {
-        id: commentId,
-      },
-    });
-
-    if (!parentComment)
-      return res.status(404).json({
-        message: "Parent comment not found",
-      });
-
-    const reply = await prisma.kanbanComment.create({
-      data: {
-        id: uuid(),
-        text: text.trim(),
-        user_id: user.user_id,
-        kanbanCardId: parentComment.kanbanCardId,
-        replyForKanbanCommentId: commentId,
-      },
-    });
-
-    res.status(201).json({
-      message: "Reply added successfully",
-      data: reply,
-    });
-  } catch (err: any) {
-    console.error("[KanbanController] Error in addReply:", err);
-    res.status(500).json({
-      message: "Server error",
-      error: err,
-    });
-  }
-};
-
-export const getReplies = async (req: Request, res: Response) => {
-  console.log("[KanbanController] getReplies accessed");
-  const { commentId } = req.params;
-  const page = parseInt(req.query.page as string) || undefined;
-  const limit = parseInt(req.query.limit as string) || undefined;
-  const skip = page && limit ? (page - 1) * limit : undefined;
-
-  try {
-    if (!commentId)
-      return res.status(400).json({
-        message: "Comment id is required",
-      });
-
-    // Check if parent comment exists
-    const parentComment = await prisma.kanbanComment.findUnique({
-      where: {
-        id: commentId,
-      },
-    });
-
-    if (!parentComment)
-      return res.status(404).json({
-        message: "Comment not found",
-      });
-
-    const [replies, totalCount] = await Promise.all([
-      prisma.kanbanComment.findMany({
-        where: {
-          replyForKanbanCommentId: commentId,
-        },
-        ...(!isUndefined(skip) && {
-          skip,
-        }),
-        ...(!isUndefined(limit) && {
-          take: limit,
-        }),
-        orderBy: {
-          id: "asc",
-        },
-      }),
-      prisma.kanbanComment.count({
-        where: {
-          replyForKanbanCommentId: commentId,
-        },
-      }),
-    ]);
-
-    res.status(200).json({
-      message: `Retrieved ${replies.length} replies`,
-      data: replies,
-      count: replies.length,
-      totalCount,
-      ...(page &&
-        limit && {
-          pagination: {
-            page,
-            limit,
-            totalPages: Math.ceil(totalCount / limit),
-            hasNextPage: page < Math.ceil(totalCount / limit),
-            hasPrevPage: page > 1,
-          },
-        }),
-    });
-  } catch (err: any) {
-    console.error("[KanbanController] Error in getReplies:", err);
-    res.status(500).json({
-      message: "Server error",
-      error: err,
-    });
-  }
-};
-
-export const likeCard = async (req: Request, res: Response) => {
-  console.log("[KanbanController] likeCard accessed");
-  const { body, params } = req;
-  const { id } = params;
-  const {
-    increment = true,
-  }: {
-    increment?: boolean;
-  } = body;
+export const updateComment = async (
+  req: FastifyRequest<{ Params: { id: string }; Body: { text?: string } }>,
+  reply: FastifyReply
+) => {
+  console.log("[KanbanController] updateComment accessed");
+  const { id } = req.params;
+  const { text } = req.body || {};
 
   try {
     if (!id)
-      return res.status(400).json({
+      return reply.status(400).send({
+        message: "Comment id is required",
+      });
+
+    if (!text?.trim())
+      return reply.status(400).send({
+        message: "Comment text is required",
+      });
+
+    await db.update(kanbanComments)
+      .set({ text: text.trim() })
+      .where(eq(kanbanComments.id, id));
+
+    const updatedComment = await db.select()
+      .from(kanbanComments)
+      .where(eq(kanbanComments.id, id))
+      .then(rows => rows[0]);
+
+    if (!updatedComment)
+      return reply.status(404).send({
+        message: "Comment not found",
+      });
+
+    reply.status(200).send({
+      message: `Comment with ID ${id} updated`,
+      data: updatedComment,
+    });
+  } catch (err) {
+    console.error("[KanbanController] Error in updateComment:", err);
+    reply.status(500).send({
+      message: "Server error",
+      error: err,
+    });
+  }
+};
+
+export const addReply = async (
+  req: FastifyRequest<{ Body: { kanbanCardId?: string; replyForKanbanCommentId?: string; text?: string; userId?: string } }>,
+  reply: FastifyReply
+) => {
+  console.log("[KanbanController] addReply accessed");
+  const { kanbanCardId, replyForKanbanCommentId, text, userId } = req.body || {};
+
+  try {
+    if (!kanbanCardId?.trim() || !text?.trim() || !userId?.trim())
+      return reply.status(400).send({
+        message: "kanbanCardId, text, and userId are required",
+      });
+
+    const commentId = uuid();
+    await db.insert(kanbanComments).values({
+      id: commentId,
+      text: text.trim(),
+      userId: userId,
+      kanbanCardId: kanbanCardId,
+      replyForKanbanCommentId: replyForKanbanCommentId || null,
+    });
+
+    const newReply = await db.select()
+      .from(kanbanComments)
+      .where(eq(kanbanComments.id, commentId))
+      .then(rows => rows[0]);
+
+    reply.status(201).send({
+      message: "Reply created successfully",
+      data: newReply,
+    });
+  } catch (err) {
+    console.error("[KanbanController] Error in addReply:", err);
+    reply.status(500).send({
+      message: "Server error",
+      error: err,
+    });
+  }
+};
+
+export const getReplies = async (
+  req: FastifyRequest<{ Params: { commentId: string } }>,
+  reply: FastifyReply
+) => {
+  console.log("[KanbanController] getReplies accessed");
+  const { commentId } = req.params;
+
+  try {
+    if (!commentId)
+      return reply.status(400).send({
+        message: "Comment id is required",
+      });
+
+    const replies = await db.select({
+      id: kanbanComments.id,
+      text: kanbanComments.text,
+      userId: kanbanComments.userId,
+      kanbanCardId: kanbanComments.kanbanCardId,
+      replyForKanbanCommentId: kanbanComments.replyForKanbanCommentId,
+      createdAt: kanbanComments.createdAt,
+      firstname: users.firstname,
+      lastname: users.lastname,
+      username: users.username,
+    })
+      .from(kanbanComments)
+      .leftJoin(users, eq(kanbanComments.userId, users.id))
+      .where(eq(kanbanComments.replyForKanbanCommentId, commentId));
+
+    reply.status(200).send({
+      message: `Retrieved ${replies.length} replies`,
+      data: replies,
+    });
+  } catch (err) {
+    console.error("[KanbanController] Error in getReplies:", err);
+    reply.status(500).send({
+      message: "Server error",
+      error: err,
+    });
+  }
+};
+
+export const likeCard = async (
+  req: FastifyRequest<{ Params: { id: string } }>,
+  reply: FastifyReply
+) => {
+  console.log("[KanbanController] likeCard accessed");
+  const { id } = req.params;
+
+  try {
+    if (!id)
+      return reply.status(400).send({
         message: "Card id is required",
       });
 
-    const card = await prisma.kanbanCard.findUnique({
-      where: {
-        id,
-      },
-    });
+    const card = await db.select()
+      .from(kanbanCards)
+      .where(eq(kanbanCards.id, id))
+      .then(rows => rows[0]);
 
     if (!card)
-      return res.status(404).json({
+      return reply.status(404).send({
         message: "Card not found",
       });
 
-    const newLikes = increment ? card.likes + 1 : Math.max(0, card.likes - 1);
+    await db.update(kanbanCards)
+      .set({ likes: (card.likes || 0) + 1 })
+      .where(eq(kanbanCards.id, id));
 
-    const updatedCard = await prisma.kanbanCard.update({
-      where: {
-        id,
-      },
-      data: {
-        likes: newLikes,
-      },
-    });
+    const updatedCard = await db.select()
+      .from(kanbanCards)
+      .where(eq(kanbanCards.id, id))
+      .then(rows => rows[0]);
 
-    res.status(200).json({
-      message: increment ? "Card liked" : "Card unliked",
+    reply.status(200).send({
+      message: `Card with ID ${id} liked`,
       data: updatedCard,
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("[KanbanController] Error in likeCard:", err);
-    res.status(500).json({
+    reply.status(500).send({
+      message: "Server error",
+      error: err,
+    });
+  }
+};
+
+export const moveCard = async (
+  req: FastifyRequest<{ Body: { cardId?: string; newColumnId?: string; newIndex?: number } }>,
+  reply: FastifyReply
+) => {
+  console.log("[KanbanController] moveCard accessed");
+  const { cardId, newColumnId, newIndex } = req.body || {};
+
+  try {
+    if (!cardId?.trim() || !newColumnId?.trim())
+      return reply.status(400).send({
+        message: "cardId and newColumnId are required",
+      });
+
+    const card = await db.select()
+      .from(kanbanCards)
+      .where(eq(kanbanCards.id, cardId))
+      .then(rows => rows[0]);
+
+    if (!card)
+      return reply.status(404).send({
+        message: "Card not found",
+      });
+
+    await db.update(kanbanCards)
+      .set({ kanbanColumnId: newColumnId })
+      .where(eq(kanbanCards.id, cardId));
+
+    const updatedCard = await db.select()
+      .from(kanbanCards)
+      .where(eq(kanbanCards.id, cardId))
+      .then(rows => rows[0]);
+
+    reply.status(200).send({
+      message: `Card moved successfully`,
+      data: updatedCard,
+    });
+  } catch (err) {
+    console.error("[KanbanController] Error in moveCard:", err);
+    reply.status(500).send({
       message: "Server error",
       error: err,
     });

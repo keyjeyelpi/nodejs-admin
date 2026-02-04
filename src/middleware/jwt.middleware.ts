@@ -1,5 +1,5 @@
 import process from "node:process";
-import type { Request, Response, NextFunction } from "express";
+import type { FastifyRequest, FastifyReply } from "fastify";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 
@@ -11,16 +11,15 @@ interface JwtPayload {
   role: string;
 }
 
-export const authenticateJWT = (
-  req: Request,
-  res: Response,
-  next: NextFunction
+export const authenticateJWT = async (
+  req: FastifyRequest,
+  reply: FastifyReply
 ) => {
-  console.log("[JWTMiddleware] authenticateJWT accessed for path:", req.path);
+  console.log("[JWTMiddleware] authenticateJWT accessed for path:", req.url);
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith("Bearer "))
-    return res.status(401).json({
+    return reply.status(401).send({
       message: "Authorization header missing or malformed",
       data:
         process.env.NODE_ENV === "development"
@@ -33,24 +32,22 @@ export const authenticateJWT = (
   try {
     const jwtSecret = process.env.JWT_SECRET;
 
-    if (!jwtSecret) return res.sendStatus(500);
+    if (!jwtSecret) return reply.status(500).send({ error: "Server misconfiguration" });
 
-    if (!token) return res.sendStatus(401);
+    if (!token) return reply.status(401).send({ error: "Token missing" });
 
     (req as any).user = jwt.verify(
       token as string,
       jwtSecret as string
     ) as unknown as JwtPayload;
-
-    next();
   } catch (err) {
     if (err instanceof jwt.TokenExpiredError)
-      return res.status(401).json({
+      return reply.status(401).send({
         error: "TokenExpired",
         message: "Token has expired, please log in again.",
       });
 
-    return res.status(403).json({
+    return reply.status(403).send({
       error: "InvalidToken",
       message: "Token is invalid.",
     });

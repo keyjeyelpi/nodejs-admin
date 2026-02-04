@@ -1,9 +1,7 @@
-import { Router } from "express";
+import type { FastifyInstance } from "fastify";
 import { authenticateJWT } from "../middleware/jwt.middleware.ts";
 import { fetchAllAccounts } from "../controllers/account.controller.ts";
 
-const router = Router();
-
-router.get("/", authenticateJWT, fetchAllAccounts);
-
-export default router;
+export default async function accountRoutes(fastify: FastifyInstance) {
+  fastify.get("/", { preHandler: [authenticateJWT] }, fetchAllAccounts);
+}

@@ -1,4 +1,4 @@
-import { Router } from "express";
+import type { FastifyInstance } from "fastify";
 import { authenticateJWT } from "../middleware/jwt.middleware.ts";
 import { signature } from "../middleware/signature.middleware.ts";
 import {
@@ -9,16 +9,41 @@ import {
   updateUser,
 } from "../controllers/user.controller.ts";
 
-const router = Router();
+interface QueryParams {
+  page?: string;
+  limit?: string;
+  sortOrder?: string;
+  sortBy?: string;
+}
 
-router.get("/", authenticateJWT, fetchAllUsers);
+export default async function userRoutes(fastify: FastifyInstance) {
+  fastify.get<{ Querystring: QueryParams }>(
+    "/",
+    { preHandler: [authenticateJWT] },
+    fetchAllUsers
+  );
 
-router.get("/:id", authenticateJWT, fetchUserByAccountID);
+  fastify.get<{ Params: { id: string } }>(
+    "/:id",
+    { preHandler: [authenticateJWT] },
+    fetchUserByAccountID
+  );
 
-router.post("/", authenticateJWT, signature, createUser);
+  fastify.post<{ Body: any }>(
+    "/",
+    { preHandler: [authenticateJWT, signature] },
+    createUser
+  );
 
-router.put("/:user_id", authenticateJWT, signature, updateUser);
+  fastify.put<{ Params: { user_id: string }; Body: any }>(
+    "/:user_id",
+    { preHandler: [authenticateJWT, signature] },
+    updateUser
+  );
 
-router.delete("/:user_id", authenticateJWT, signature, deleteUser);
-
-export default router;
+  fastify.delete<{ Params: { user_id: string } }>(
+    "/:user_id",
+    { preHandler: [authenticateJWT, signature] },
+    deleteUser
+  );
+}

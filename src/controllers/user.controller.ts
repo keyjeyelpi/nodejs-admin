@@ -1,185 +1,213 @@
-import type { Request, Response } from "express";
-import { prisma } from "../config/prisma.config.ts";
-import { toCamelCase } from "../utils/caseConverter.util.ts";
+import type { FastifyRequest, FastifyReply } from "fastify";
+import { db } from "../db/index.js";
+import { users, accountType } from "../db/schema.js";
+import { desc, eq, asc, sql, type AnyColumn } from "drizzle-orm";
+import { toCamelCase } from "../utils/caseConverter.util.js";
 
-export const fetchAllUsers = async (req: Request, res: Response) => {
+interface QueryParams {
+  page?: string;
+  limit?: string;
+  sortOrder?: string;
+  sortBy?: string;
+}
+
+// Mapping for sortable columns
+const sortableColumns: Record<string, AnyColumn> = {
+  id: users.id,
+  lastname: users.lastname,
+  firstname: users.firstname,
+  email: users.email,
+  username: users.username,
+  country: users.country,
+  contactnumber: users.contactnumber,
+  createdAt: users.createdAt,
+};
+
+export const fetchAllUsers = async (
+  req: FastifyRequest<{ Querystring: QueryParams }>,
+  reply: FastifyReply
+) => {
+  console.log("fetchAllUsers accessed");
   try {
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
+    const page = parseInt(req.query.page || "1");
+    const limit = parseInt(req.query.limit || "10");
     const sortOrder = (req.query.sortOrder as string) || "asc";
-    const sortBy = (req.query.sortBy as string) || "lastname";
+    const sortByColumn = sortableColumns[req.query.sortBy as string] || users.lastname;
     const skip = (page - 1) * limit;
 
-    const [users, totalCount] = await Promise.all([
-      prisma.user.findMany({
-        skip,
-        take: limit,
-        orderBy: {
-          [sortBy]: sortOrder,
-        },
-        include: {
-          account_type: {
-            select: {
-              title: true,
-              is_editable: true,
-              is_deletable: true,
-              allowed_to_edit: true,
-              is_selectable: true,
-            },
-          },
-          settings: true,
-        },
-      }),
-      prisma.user.count(),
-    ]);
+    const allUsers = await db.select({
+      id: users.id,
+      userId: users.id,
+      country: users.country,
+      accountTypeId: users.accountTypeId,
+      lastname: users.lastname,
+      firstname: users.firstname,
+      email: users.email,
+      username: users.username,
+      contactnumber: users.contactnumber,
+      createdAt: users.createdAt,
+      updatedAt: users.updatedAt,
+      accountType: {
+        title: accountType.title,
+        isEditable: accountType.isEditable,
+        isDeletable: accountType.isDeletable,
+        allowedToEdit: accountType.allowedToEdit,
+        isSelectable: accountType.isSelectable,
+      },
+    })
+      .from(users)
+      .leftJoin(accountType, eq(users.accountTypeId, accountType.accountId))
+      .orderBy(sortOrder === "asc" ? asc(sortByColumn) : desc(sortByColumn))
+      .limit(limit)
+      .offset(skip);
 
-    res.status(200).json({
-      message: "",
-      data: toCamelCase(users),
-      count: users.length,
-      totalCount,
-      pagination: {
+    const totalCountResult = await db.select({ count: sql<number>`count(*)` }).from(users);
+    const totalCount = totalCountResult[0]?.count || 0;
+
+    reply.status(200).send({
+      data: {
+        users: toCamelCase(allUsers),
+        total: totalCount,
         page,
         limit,
-        totalPages: Math.ceil(totalCount / limit),
-        hasNextPage: page < Math.ceil(totalCount / limit),
-        hasPrevPage: page > 1,
       },
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({
+    reply.status(500).send({
       message: "Server error",
       error: err,
     });
   }
 };
 
-export const fetchUserByAccountID = async (req: Request, res: Response) => {
+export const fetchUserByAccountID = async (
+  req: FastifyRequest<{ Params: { id: string } }>,
+  reply: FastifyReply
+) => {
+  console.log("fetchUserByAccountID accessed");
   const { id } = req.params;
 
   try {
-    const user = await prisma.user.findUnique({
-      where: {
-        id: Number(id),
-      },
-      include: {
-        settings: true,
-      },
-    });
+    const user = await db.select()
+      .from(users)
+      .leftJoin(accountType, eq(users.accountTypeId, accountType.accountId))
+      .where(eq(users.id, id))
+      .then(rows => rows[0]);
 
     if (!user)
-      return res.status(404).json({
+      return reply.status(404).send({
         message: "User not found",
       });
 
-    res.status(200).json({
+    reply.status(200).send({
       message: `Get user with ID ${id}`,
       data: toCamelCase(user),
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({
+    reply.status(500).send({
       message: "Server error",
       error: err,
     });
   }
 };
 
-export const createUser = async (req: Request, res: Response) => {
-  const { email, password } = req.body;
+export const createUser = async (
+  req: FastifyRequest<{ Body: { email?: string; password?: string } }>,
+  reply: FastifyReply
+) => {
+  console.log("createUser accessed");
+  const { email, password } = req.body || {};
 
   try {
     if (!email || !password)
-      return res.status(400).json({
+      return reply.status(400).send({
         message: "Email and password required",
       });
 
-    const existingUser = await prisma.user.findUnique({
-      where: {
-        email,
-      },
-    });
+    const existingUser = await db.select()
+      .from(users)
+      .where(eq(users.email, email))
+      .then(rows => rows[0]);
 
     if (existingUser)
-      return res.status(400).json({
+      return reply.status(400).send({
         message: "User already exists",
       });
 
-    res.status(201).json({
+    reply.status(201).send({
       message: "User registered successfully",
     });
   } catch (err) {
     console.error(err);
-    return res.status(500).json({
+    return reply.status(500).send({
       message: "Server error",
       error: err,
     });
   }
 };
 
-export const updateUser = async (req: Request, res: Response) => {
+export const updateUser = async (
+  req: FastifyRequest<{ Params: { user_id: string }; Body: Record<string, unknown> }>,
+  reply: FastifyReply
+) => {
+  console.log("updateUser accessed");
   const { user_id } = req.params;
 
   if (!user_id)
-    return res.status(400).json({
+    return reply.status(400).send({
       message: "user_id is required",
     });
 
   try {
-    const updatedUser = await prisma.user.update({
-      where: {
-        user_id,
-      },
-      data: req.body,
-    });
+    await db.update(users)
+      .set(req.body)
+      .where(eq(users.id, user_id));
 
-    res.status(200).json({
+    reply.status(200).send({
       message: `User with ID ${user_id} updated`,
-      data: toCamelCase(updatedUser),
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error(err);
 
-    if (err.code === "P2025")
-      return res.status(404).json({
+    // Check for record not found error (drizzle throws different errors)
+    if (err && typeof err === 'object' && 'code' in err && err.code === 'ER_ROW_IS_REFERENCED_2') {
+      return reply.status(404).send({
         message: "User not found",
       });
+    }
 
-    res.status(500).json({
+    reply.status(500).send({
       message: "Server error",
       error: err,
     });
   }
 };
 
-export const deleteUser = async (req: Request, res: Response) => {
+export const deleteUser = async (
+  req: FastifyRequest<{ Params: { user_id: string } }>,
+  reply: FastifyReply
+) => {
+  console.log("deleteUser accessed");
   const { user_id } = req.params;
 
   if (!user_id)
-    return res.status(400).json({
+    return reply.status(400).send({
       message: "user_id is required",
     });
 
   try {
-    await prisma.user.delete({
-      where: {
-        user_id,
-      },
-    });
+    await db.delete(users)
+      .where(eq(users.id, user_id));
 
-    res.status(200).json({
+    reply.status(200).send({
       message: `User with ID ${user_id} deleted`,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error(err);
 
-    if (err.code === "P2025")
-      return res.status(404).json({
-        message: "User not found",
-      });
-
-    res.status(500).json({
+    reply.status(500).send({
       message: "Server error",
       error: err,
     });

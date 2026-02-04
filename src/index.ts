@@ -1,39 +1,35 @@
 import process from "node:process";
-import bodyParser from "body-parser";
-import cors from "cors";
+import cors from "@fastify/cors";
 import dotenv from "dotenv";
-import express from "express";
-import helmet from "helmet";
+import fastify from "fastify";
+import fastifyHelmet from "@fastify/helmet";
 import routes from "./routes/index.ts";
 
 dotenv.config();
-const app = express();
+const app = fastify({
+  logger: true,
+});
 const PORT = process.env.PORT || 3000;
 
-app.use(express.json());
-app.use(
-  express.urlencoded({
-    extended: true,
-  })
-);
-app.use(
-  bodyParser.urlencoded({
-    extended: false,
-  })
-);
-app.use(bodyParser.json());
+async function start() {
+  try {
+    // Register CORS
+    await app.register(cors, {
+      origin: "*",
+    });
 
-app.use(
-  cors({
-    origin: "*",
-  })
-);
+    // Register Helmet
+    await app.register(fastifyHelmet);
 
-app.use("/", routes);
+    // Register routes
+    await app.register(routes);
 
-app.use(express.json());
-app.use(helmet());
+    await app.listen({ port: Number(PORT) });
+    console.log(`✅ Server running at http://localhost:${PORT}`);
+  } catch (err) {
+    app.log.error(err);
+    process.exit(1);
+  }
+}
 
-app.listen(PORT, () => {
-  console.log(`✅ Server running at http://localhost:${PORT}`);
-});
+start();

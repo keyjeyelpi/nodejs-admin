@@ -1,17 +1,21 @@
-import type { Request, Response } from "express";
-import { prisma } from "../config/prisma.config.ts";
+import type { FastifyRequest, FastifyReply } from "fastify";
+import { db } from "../db/index.js";
+import { accountType } from "../db/schema.js";
 
-export const fetchAllAccounts = async (_req: Request, res: Response) => {
+export const fetchAllAccounts = async (
+  _req: FastifyRequest,
+  reply: FastifyReply
+) => {
   try {
-    const accounts = await prisma.accountType.findMany();
+    const accounts = await db.select().from(accountType);
 
-    res.status(200).json({
+    reply.status(200).send({
       message: "",
       data: accounts,
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({
+    reply.status(500).send({
       message: "Server error",
       error: err,
     });

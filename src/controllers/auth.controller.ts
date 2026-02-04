@@ -1,73 +1,91 @@
 import process from "node:process";
-import type { Request, Response } from "express";
+import type { FastifyRequest, FastifyReply } from "fastify";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
-import { prisma } from "../config/prisma.config.ts";
-import { decrypt } from "../utils/encryption.util.ts";
-import { toCamelCase } from "../utils/caseConverter.util.ts";
+import { db } from "../db/index.js";
+import { users, userSettings } from "../db/schema.js";
+import { eq, or } from "drizzle-orm";
+import { decrypt } from "../utils/encryption.util.js";
+import { toCamelCase } from "../utils/caseConverter.util.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "";
 
-export const login = async (req: Request, res: Response) => {
+export const login = async (
+  req: FastifyRequest<{ Body: { username?: string; password?: string } }>,
+  reply: FastifyReply
+) => {
   if (!req.body)
-    return res.status(400).json({
+    return reply.status(400).send({
       message: "Request body is missing",
     });
 
-  const { username, password } = req.body;
+  const { username, password } = req.body || {};
 
   if (!username || !password)
-    return res.status(400).json({
+    return reply.status(400).send({
       message: "Username and password are required",
     });
 
   try {
-    const user = await prisma.user.findFirst({
-      where: {
-        OR: [
-          {
-            email: username,
-          },
-          {
-            username,
-          },
-        ],
+    const userResult = await db.select({
+      id: users.id,
+      userId: users.id,
+      country: users.country,
+      accountTypeId: users.accountTypeId,
+      lastname: users.lastname,
+      firstname: users.firstname,
+      email: users.email,
+      username: users.username,
+      contactnumber: users.contactnumber,
+      password: users.password,
+      createdAt: users.createdAt,
+      updatedAt: users.updatedAt,
+      settings: {
+        colorPrimary: userSettings.colorPrimary,
+        colorSecondary: userSettings.colorSecondary,
+        darkModePreference: userSettings.darkModePreference,
       },
-      include: {
-        settings: true,
-      },
-    });
+    })
+      .from(users)
+      .leftJoin(userSettings, eq(users.id, userSettings.userId))
+      .where(
+        or(
+          eq(users.email, username),
+          eq(users.username, username)
+        )
+      )
+      .then(rows => rows[0]);
 
-    if (!user)
-      return res.status(401).json({
+    if (!userResult)
+      return reply.status(401).send({
         message: "User does not exist",
       });
 
-    const isMatch = await bcrypt.compare(decrypt(password), user.password);
+    const isMatch = await bcrypt.compare(decrypt(password), userResult.password || "");
 
     if (!isMatch)
-      return res.status(401).json({
+      return reply.status(401).send({
         message: "Password is incorrect",
       });
 
     const token = jwt.sign(
-      { id: user.user_id, username: user.username },
+      { id: userResult.id, username: userResult.username },
       JWT_SECRET,
       {
         expiresIn: "1d",
       }
     );
 
-    res.json({
+    reply.send({
       message: "Login successful",
       data: {
         token,
-        ...(toCamelCase(user) || {}),
+        ...(toCamelCase(userResult) || {}),
       },
     });
   } catch (err) {
     console.error(err);
-    return res.status(500).json({
+    return reply.status(500).send({
       message: "Server error",
       error: err,
     });

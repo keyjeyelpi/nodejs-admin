@@ -1,11 +1,11 @@
-import type { Request, Response } from "express";
+import type { FastifyRequest, FastifyReply } from "fastify";
 import type { ErrorResponse } from "../interfaces/error.interface.ts";
 
-export const error404 = (req: Request, res: Response) => {
+export const error404 = (req: FastifyRequest, reply: FastifyReply) => {
   console.log(
-    `[${new Date().toISOString()}] ${req.method} ${req.originalUrl} -> 404`
+    `[${new Date().toISOString()}] ${req.method} ${req.url} -> 404`
   );
-  res.status(404).json({
+  reply.status(404).send({
     error: "Not Found",
   });
 };
@@ -14,8 +14,8 @@ export const globalErrorHandler = (
   err: Error & {
     statusCode?: number;
   },
-  _req: Request,
-  res: Response
+  request: FastifyRequest,
+  reply: FastifyReply
 ): void => {
   console.error(err.message, err.stack);
   const statusCode: number =
@@ -28,6 +28,6 @@ export const globalErrorHandler = (
     },
   };
 
-  res.status(statusCode).json(response);
+  reply.status(statusCode).send(response);
   return;
 };

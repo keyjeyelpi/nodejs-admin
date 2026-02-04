@@ -1,13 +1,25 @@
-import { Router } from "express";
+import type { FastifyInstance } from "fastify";
 import { authenticateJWT } from "../middleware/jwt.middleware.ts";
 import { signature } from "../middleware/signature.middleware.ts";
 
-const router = Router();
+export default async function userSettingsRoutes(fastify: FastifyInstance) {
+  fastify.get("/", { preHandler: [authenticateJWT, signature] }, async (req, reply) => {
+    return { message: "User settings" };
+  });
 
-router.get("/", authenticateJWT, signature);
+  fastify.put<{ Params: { user_id: string } }>(
+    "/:user_id",
+    { preHandler: [authenticateJWT, signature] },
+    async (req, reply) => {
+      return { message: "Update user settings" };
+    }
+  );
 
-router.put("/:user_id", authenticateJWT, signature);
-
-router.delete("/:user_id", authenticateJWT, signature);
-
-export default router;
+  fastify.delete<{ Params: { user_id: string } }>(
+    "/:user_id",
+    { preHandler: [authenticateJWT, signature] },
+    async (req, reply) => {
+      return { message: "Delete user settings" };
+    }
+  );
+}
