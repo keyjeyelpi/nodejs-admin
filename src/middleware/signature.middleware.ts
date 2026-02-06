@@ -5,28 +5,29 @@ import { decrypt, encrypt } from "../utils/encryption.util.ts";
 
 dotenv.config();
 
-export const signature = async (
-  req: FastifyRequest,
-  reply: FastifyReply
-) => {
+export const signature = async (req: FastifyRequest, reply: FastifyReply) => {
   if (!req.body)
     return reply.status(400).send({
       message: "Request body is missing",
     });
 
-  const { signature, ...body } = req.body as { signature?: string; [key: string]: any };
+  const { signature, ...body } = req.body as {
+    signature?: string;
+    [key: string]: any;
+  };
 
   const predefinedSignature = Object.values(body)
     .map((v) => JSON.stringify(v))
+    .sort()
     .join("");
 
-  const errorResponse = (msg: string) =>
+  const errorResponse = (message: string) =>
     reply.status(400).send({
-      message: msg,
+      message,
       signature:
         process.env.NODE_ENV === "development"
           ? encrypt(predefinedSignature)
-          : undefined,
+          : process.env.NODE_ENV,
     });
 
   if (!signature) return errorResponse("Signature is required");
