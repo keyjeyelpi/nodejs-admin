@@ -68,6 +68,7 @@ export const fetchAllUsers = async (
       data: {
         users: toCamelCase(allUsers),
         total: totalCount,
+        pageTotal: Math.ceil(totalCount / limit),
         page,
         limit,
       },

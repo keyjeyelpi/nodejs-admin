@@ -6,6 +6,7 @@ export const error404 = (req: FastifyRequest, reply: FastifyReply) => {
     `[${new Date().toISOString()}] ${req.method} ${req.url} -> 404`
   );
   reply.status(404).send({
+    message: "API endpoint not found",
     error: "Not Found",
   });
 };
