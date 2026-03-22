@@ -2,13 +2,16 @@ import process from "node:process";
 import type { FastifyRequest, FastifyReply } from "fastify";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
-import { eq, or } from "drizzle-orm";
+import { eq, or, and } from "drizzle-orm";
 import { db } from "../db/index.js";
-import { users, userSettings } from "../db/schema.js";
+import { users, userSettings, userTokens } from "../db/schema.js";
 import { decrypt } from "../utils/encryption.util.js";
-import { toCamelCase } from "../utils/caseConverter.util.js";
+import { toCamelCase } from "../utils/case-converter.util.ts";
+import { randomUUID } from "node:crypto";
 
 const JWT_SECRET = process.env.JWT_SECRET || "";
+const EXPIRATION_IN_MINUTES = 30;
+const EXPIRES_AT = `${EXPIRATION_IN_MINUTES}m`;
 
 export const login = async (
   req: FastifyRequest<{
@@ -83,15 +86,143 @@ export const login = async (
       { id: userResult.id, username: userResult.username },
       JWT_SECRET,
       {
-        expiresIn: "1d",
+        expiresIn: EXPIRES_AT,
       }
     );
+
+    // Generate refresh token
+    const refreshToken = randomUUID();
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 1); // 1 day expiry
+
+    await db.insert(userTokens).values({
+      token: refreshToken,
+      userID: userResult.id,
+      expiration: expiresAt,
+    } as any);
 
     reply.send({
       message: "Login successful",
       data: {
         token,
+        refreshToken,
+        expiresAt: new Date(Date.now() + EXPIRATION_IN_MINUTES * 60 * 1000),
         ...(toCamelCase(userResult) || {}),
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    return reply.status(500).send({
+      message: "Server error",
+      error: err,
+    });
+  }
+};
+
+export const refreshToken = async (
+  req: FastifyRequest<{
+    Body: {
+      refreshToken?: string;
+    };
+  }>,
+  reply: FastifyReply
+) => {
+  if (!req.body)
+    return reply.status(400).send({
+      message: "Request body is missing",
+    });
+
+  const { refreshToken: token } = req.body || {};
+
+  if (!token) {
+    console.warn("Refresh token is missing in request body");
+    return reply.status(400).send({
+      message: "Refresh token is required",
+    });
+  }
+
+  try {
+    // Find the refresh token in the database
+    const tokenResult = await db
+      .select({
+        id: userTokens.id,
+        token: userTokens.token,
+        userID: userTokens.userID,
+        expiration: userTokens.expiration,
+      })
+      .from(userTokens)
+      .where(eq(userTokens.token, token))
+      .then((rows) => rows[0]);
+
+    if (!tokenResult) {
+      console.warn("Refresh token not found in database:", token);
+      return reply.status(401).send({
+        message: "Invalid refresh token",
+      });
+    }
+
+    // Check if token has expired
+    const now = new Date();
+    const expiresAt = new Date(tokenResult.expiration as unknown as string);
+
+    if (now > expiresAt) {
+      // Delete expired token
+      await db.delete(userTokens).where(eq(userTokens.id, tokenResult.id));
+      return reply.status(401).send({
+        message: "Session expired",
+      });
+    }
+
+    // Get user information
+    const userResult = await db
+      .select({
+        id: users.id,
+        userId: users.id,
+        country: users.country,
+        accountTypeId: users.accountTypeId,
+        lastname: users.lastname,
+        firstname: users.firstname,
+        email: users.email,
+        username: users.username,
+        contactnumber: users.contactnumber,
+        active: users.active,
+      })
+      .from(users)
+      .where(eq(users.id, tokenResult.userID))
+      .then((rows) => rows[0]);
+
+    if (!userResult || !userResult.active)
+      return reply.status(401).send({
+        message: "User not found or inactive",
+      });
+
+    // Generate new access token
+    const newAccessToken = jwt.sign(
+      { id: userResult.id, username: userResult.username },
+      JWT_SECRET,
+      {
+        expiresIn: EXPIRES_AT,
+      }
+    );
+
+    // Optional: Rotate refresh token (generate new one and invalidate old one)
+    const newRefreshToken = randomUUID();
+    const newExpiresAt = new Date();
+    newExpiresAt.setDate(newExpiresAt.getDate() + 1); // 1 day expiry
+
+    // Delete old refresh token and create new one
+    await db.delete(userTokens).where(eq(userTokens.id, tokenResult.id));
+    await db.insert(userTokens).values({
+      token: newRefreshToken,
+      userID: userResult.id,
+      expiration: newExpiresAt,
+    } as any);
+
+    reply.send({
+      message: "Token refreshed successfully",
+      data: {
+        token: newAccessToken,
+        refreshToken: newRefreshToken,
       },
     });
   } catch (err) {

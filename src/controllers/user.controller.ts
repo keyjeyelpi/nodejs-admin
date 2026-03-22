@@ -2,7 +2,7 @@ import type { FastifyRequest, FastifyReply } from "fastify";
 import { db } from "../db/index.js";
 import { users, accountType } from "../db/schema.js";
 import { desc, eq, asc, sql, or, and, like, type AnyColumn } from "drizzle-orm";
-import { toCamelCase } from "../utils/caseConverter.util.js";
+import { toCamelCase } from "../utils/case-converter.util.ts";
 
 interface QueryParams {
   page?: string;

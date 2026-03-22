@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { login } from "../controllers/auth.controller.ts";
+import { login, refreshToken } from "../controllers/auth.controller.ts";
 import { signature } from "../middleware/signature.middleware.ts";
 
 export default async function authRoutes(fastify: FastifyInstance) {
@@ -7,5 +7,11 @@ export default async function authRoutes(fastify: FastifyInstance) {
     "/login",
     { preHandler: [signature] },
     login
+  );
+
+  fastify.post<{ Body: { refreshToken?: string } }>(
+    "/refresh",
+    { preHandler: [signature] },
+    refreshToken
   );
 }

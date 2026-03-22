@@ -1,4 +1,4 @@
-import { mysqlTable, varchar, int, boolean, text, datetime, mysqlEnum } from "drizzle-orm/mysql-core";
+import { mysqlTable, varchar, int, boolean, text, datetime, mysqlEnum, timestamp } from "drizzle-orm/mysql-core";
 import { sql } from "drizzle-orm";
 import { relations } from "drizzle-orm";
 
@@ -35,6 +35,13 @@ export const userSettings = mysqlTable("user_settings", {
   colorPrimary: varchar("color_primary", { length: 191 }).notNull(),
   colorSecondary: varchar("color_secondary", { length: 191 }).notNull(),
   darkModePreference: varchar("dark_mode_preference", { length: 191 }).default("system").notNull(),
+});
+
+export const userTokens = mysqlTable("user_token", {
+  id: int("id").autoincrement().primaryKey(),
+  userID: varchar("userID", { length: 191 }).notNull(),
+  token: varchar("token", { length: 500 }).notNull(),
+  expiration: datetime("expiration").notNull(),
 });
 
 export const kanbanBoards = mysqlTable("kanban_boards", {
@@ -96,6 +103,13 @@ export const userSettingsRelations = relations(userSettings, ({ one }) => ({
   }),
 }));
 
+export const userTokensRelations = relations(userTokens, ({ one }) => ({
+  user: one(users, {
+    fields: [userTokens.userID],
+    references: [users.id],
+  }),
+}));
+
 export const kanbanBoardsRelations = relations(kanbanBoards, ({ many }) => ({
   columns: many(kanbanColumns),
 }));
@@ -126,3 +140,4 @@ export const kanbanCommentsRelations = relations(kanbanComments, ({ one }) => ({
     references: [kanbanCards.id],
   }),
 }));
+
