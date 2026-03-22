@@ -35,15 +35,15 @@ export default async function userRoutes(fastify: FastifyInstance) {
     createUser
   );
 
-  fastify.put<{ Params: { user_id: string }; Body: any }>(
-    "/:user_id",
+  fastify.put<{ Params: { id: string }; Body: any }>(
+    "/:id",
     { preHandler: [authenticateJWT, signature] },
     updateUser
   );
 
-  fastify.delete<{ Params: { user_id: string } }>(
-    "/:user_id",
-    { preHandler: [authenticateJWT, signature] },
+  fastify.delete<{ Params: { id: string } }>(
+    "/:id",
+    { preHandler: [authenticateJWT] },
     deleteUser
   );
 }

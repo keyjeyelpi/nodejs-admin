@@ -24,12 +24,13 @@ async function start() {
     // Register routes
     await app.register(routes);
 
-    await app.listen({ port: Number(PORT) });
+    await app.listen({
+      port: Number(PORT), host: '0.0.0.0' });
     console.log(`✅ Server running at http://localhost:${PORT}`);
-  } catch (err) {
-    app.log.error(err);
-    process.exit(1);
+    } catch (err) {
+      app.log.error(err);
+      process.exit(1);
+    }
   }
-}
 
 start();

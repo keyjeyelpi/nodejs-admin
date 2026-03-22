@@ -46,6 +46,7 @@ export const login = async (
         password: users.password,
         createdAt: users.createdAt,
         updatedAt: users.updatedAt,
+        active: users.active,
         settings: {
           colorPrimary: userSettings.colorPrimary,
           colorSecondary: userSettings.colorSecondary,
@@ -62,6 +63,11 @@ export const login = async (
         message: "User does not exist",
       });
 
+    if (!userResult.active) {
+      return reply.status(403).send({
+        message: "User account is inactive. Please contact support.",
+      });
+    }
 
     const isMatch = await bcrypt.compare(
       decrypt(password),

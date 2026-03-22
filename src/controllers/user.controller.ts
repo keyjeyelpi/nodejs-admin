@@ -1,7 +1,7 @@
 import type { FastifyRequest, FastifyReply } from "fastify";
 import { db } from "../db/index.js";
 import { users, accountType } from "../db/schema.js";
-import { desc, eq, asc, sql, type AnyColumn } from "drizzle-orm";
+import { desc, eq, asc, sql, or, and, like, type AnyColumn } from "drizzle-orm";
 import { toCamelCase } from "../utils/caseConverter.util.js";
 
 interface QueryParams {
@@ -9,6 +9,8 @@ interface QueryParams {
   limit?: string;
   sortOrder?: string;
   sortBy?: string;
+  search?: string;
+  status?: string;
 }
 
 // Mapping for sortable columns
@@ -30,10 +32,42 @@ export const fetchAllUsers = async (
   console.log("fetchAllUsers accessed");
   try {
     const page = parseInt(req.query.page || "1");
-    const limit = parseInt(req.query.limit || "10");
+    const limit = parseInt(req.query.limit || "12");
+    const search = (req.query.search as string) || "";
+    const active = req.query.status !== undefined ? parseInt(req.query.status as string) : 0;
     const sortOrder = (req.query.sortOrder as string) || "asc";
     const sortByColumn = sortableColumns[req.query.sortBy as string] || users.lastname;
     const skip = (page - 1) * limit;
+
+    // Build search condition
+    const searchCondition = search
+      ? or(
+        like(users.lastname, `%${search}%`),
+        like(users.firstname, `%${search}%`),
+        like(users.email, `%${search}%`),
+        like(users.username, `%${search}%`),
+        like(users.country, `%${search}%`),
+        like(users.contactnumber, `%${search}%`)
+      )
+      : undefined;
+
+    // Build active filter condition
+    // active === 0: return all users
+    // active === 1: return only active users
+    // active === 2: return only inactive users
+    let activeCondition;
+    if (active === 1) {
+      activeCondition = eq(users.active, true);
+    } else if (active === 2) {
+      activeCondition = eq(users.active, false);
+    }
+
+    // Combine search and active conditions
+    const whereCondition = activeCondition
+      ? searchCondition
+        ? and(searchCondition, activeCondition)
+        : activeCondition
+      : searchCondition;
 
     const allUsers = await db.select({
       id: users.id,
@@ -45,6 +79,7 @@ export const fetchAllUsers = async (
       email: users.email,
       username: users.username,
       contactnumber: users.contactnumber,
+      active: users.active,
       createdAt: users.createdAt,
       updatedAt: users.updatedAt,
       accountType: {
@@ -57,21 +92,23 @@ export const fetchAllUsers = async (
     })
       .from(users)
       .leftJoin(accountType, eq(users.accountTypeId, accountType.accountId))
+      .where(whereCondition)
       .orderBy(sortOrder === "asc" ? asc(sortByColumn) : desc(sortByColumn))
       .limit(limit)
       .offset(skip);
 
-    const totalCountResult = await db.select({ count: sql<number>`count(*)` }).from(users);
+    const totalCountResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(users)
+      .where(whereCondition);
     const totalCount = totalCountResult[0]?.count || 0;
 
     reply.status(200).send({
-      data: {
-        users: toCamelCase(allUsers),
-        total: totalCount,
-        pageTotal: Math.ceil(totalCount / limit),
-        page,
-        limit,
-      },
+      data: toCamelCase(allUsers),
+      total: totalCount,
+      pageTotal: Math.ceil(totalCount / limit),
+      page,
+      limit,
     });
   } catch (err) {
     console.error(err);
@@ -90,7 +127,27 @@ export const fetchUserByAccountID = async (
   const { id } = req.params;
 
   try {
-    const user = await db.select()
+    const user = await db.select({
+      id: users.id,
+      userId: users.id,
+      country: users.country,
+      accountTypeId: users.accountTypeId,
+      lastname: users.lastname,
+      firstname: users.firstname,
+      email: users.email,
+      username: users.username,
+      contactnumber: users.contactnumber,
+      active: users.active,
+      createdAt: users.createdAt,
+      updatedAt: users.updatedAt,
+      accountType: {
+        title: accountType.title,
+        isEditable: accountType.isEditable,
+        isDeletable: accountType.isDeletable,
+        allowedToEdit: accountType.allowedToEdit,
+        isSelectable: accountType.isSelectable,
+      },
+    })
       .from(users)
       .leftJoin(accountType, eq(users.accountTypeId, accountType.accountId))
       .where(eq(users.id, id))
@@ -150,24 +207,24 @@ export const createUser = async (
 };
 
 export const updateUser = async (
-  req: FastifyRequest<{ Params: { user_id: string }; Body: Record<string, unknown> }>,
+  req: FastifyRequest<{ Params: { id: string }; Body: Record<string, unknown> }>,
   reply: FastifyReply
 ) => {
   console.log("updateUser accessed");
-  const { user_id } = req.params;
+  const { id } = req.params;
 
-  if (!user_id)
+  if (!id)
     return reply.status(400).send({
-      message: "user_id is required",
+      message: "id is required",
     });
 
   try {
     await db.update(users)
       .set(req.body)
-      .where(eq(users.id, user_id));
+      .where(eq(users.id, id));
 
     reply.status(200).send({
-      message: `User with ID ${user_id} updated`,
+      message: `User with ID ${id} updated`,
     });
   } catch (err: unknown) {
     console.error(err);
@@ -187,23 +244,39 @@ export const updateUser = async (
 };
 
 export const deleteUser = async (
-  req: FastifyRequest<{ Params: { user_id: string } }>,
+  req: FastifyRequest<{ Params: { id: string } }>,
   reply: FastifyReply
 ) => {
   console.log("deleteUser accessed");
-  const { user_id } = req.params;
+  const { id } = req.params;
 
-  if (!user_id)
+  if (!id)
     return reply.status(400).send({
-      message: "user_id is required",
+      message: "id is required",
     });
 
   try {
-    await db.delete(users)
-      .where(eq(users.id, user_id));
+    // Get current user to toggle their active status
+    const [user] = await db.select({ firstname: users.firstname, lastname: users.lastname, active: users.active })
+      .from(users)
+      .where(eq(users.id, id));
+
+    if (!user) {
+      return reply.status(404).send({
+        message: `User with ID ${id} not found`,
+      });
+    }
+
+    // Toggle the active status
+    const newActiveStatus = !user.active;
+
+    await db.update(users)
+      .set({ active: newActiveStatus })
+      .where(eq(users.id, id));
 
     reply.status(200).send({
-      message: `User with ID ${user_id} deleted`,
+      data: user.active,
+      message: `${user.firstname + ' ' + user.lastname} has been ${newActiveStatus ? 'activated' : 'deactivated'}.`,
     });
   } catch (err: unknown) {
     console.error(err);
