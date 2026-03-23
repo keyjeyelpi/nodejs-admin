@@ -7,7 +7,7 @@ import {
   kanbanCards,
   kanbanComments,
   users,
-} from "../db/schema.db.ts";
+} from "../db/schema/index.ts";
 import { eq, asc, desc, sql, and } from "drizzle-orm";
 
 // Define valid values as constants to avoid enum issues

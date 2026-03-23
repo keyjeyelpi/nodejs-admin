@@ -1,6 +1,6 @@
 import type { FastifyRequest, FastifyReply } from "fastify";
 import { db } from "../db/index.js";
-import { users, accountTypes } from "../db/schema.db.ts";
+import { users, accountTypes } from "../db/schema/index.ts";
 import { desc, eq, asc, sql, or, and, like, type AnyColumn } from "drizzle-orm";
 import { toCamelCase } from "../utils/case-converter.util.ts";
 

@@ -1,6 +1,6 @@
 import type { FastifyRequest, FastifyReply } from "fastify";
 import { db } from "../db/index.js";
-import { userSettings } from "../db/schema.db.ts";
+import { userSettings } from "../db/schema/index.ts";
 import { eq } from "drizzle-orm";
 
 export const fetchUserSettings = async (
