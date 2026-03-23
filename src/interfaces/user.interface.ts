@@ -1,5 +1,4 @@
 export interface UserBody {
-  id?: string;
   userId?: string;
   country: string;
   accountTypeId: string;
