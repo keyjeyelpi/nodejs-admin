@@ -3,15 +3,8 @@ import { db } from "../db/index.js";
 import { users, accountTypes } from "../db/schema/index.ts";
 import { desc, eq, asc, sql, or, and, like, type AnyColumn } from "drizzle-orm";
 import { toCamelCase } from "../utils/case-converter.util.ts";
-
-interface QueryParams {
-  page?: string;
-  limit?: string;
-  sortOrder?: string;
-  sortBy?: string;
-  search?: string;
-  status?: string;
-}
+import type { QueryParams } from "../interfaces/general.interface.ts";
+import type { UserBody } from "../interfaces/user.interface.js";
 
 // Mapping for sortable columns
 const sortableColumns: Record<string, AnyColumn> = {
@@ -172,16 +165,16 @@ export const fetchUserByAccountID = async (
 };
 
 export const createUser = async (
-  req: FastifyRequest<{ Body: { email?: string; password?: string } }>,
+  req: FastifyRequest<{ Body: UserBody }>,
   reply: FastifyReply
 ) => {
   console.log("createUser accessed");
-  const { email, password } = req.body || {};
+  const { email, username, password, country, accountTypeId, lastname, firstname, contactnumber, active } = req.body || {};
 
   try {
-    if (!email || !password)
+    if (!email || !username || !password || !country || !accountTypeId || !lastname || !firstname || !contactnumber)
       return reply.status(400).send({
-        message: "Email and password required",
+        message: "All fields are required",
       });
 
     const existingUser = await db.select()
@@ -194,8 +187,41 @@ export const createUser = async (
         message: "User already exists",
       });
 
+    await db.insert(users)
+      .values({
+        id: crypto.randomUUID(),
+        email,
+        username,
+        password,
+        country,
+        accountTypeId,
+        lastname,
+        firstname,
+        contactnumber,
+        active: active ?? true,
+      });
+
+    // Fetch the created user
+    const [newUser] = await db.select({
+      id: users.id,
+      userId: users.id,
+      country: users.country,
+      accountTypeId: users.accountTypeId,
+      lastname: users.lastname,
+      firstname: users.firstname,
+      email: users.email,
+      username: users.username,
+      contactnumber: users.contactnumber,
+      active: users.active,
+      createdAt: users.createdAt,
+      updatedAt: users.updatedAt,
+    })
+      .from(users)
+      .where(eq(users.email, email));
+
     reply.status(201).send({
       message: "User registered successfully",
+      data: toCamelCase(newUser),
     });
   } catch (err) {
     console.error(err);
@@ -207,11 +233,12 @@ export const createUser = async (
 };
 
 export const updateUser = async (
-  req: FastifyRequest<{ Params: { id: string }; Body: Record<string, unknown> }>,
+  req: FastifyRequest<{ Params: { id: string }; Body: UserBody }>,
   reply: FastifyReply
 ) => {
   console.log("updateUser accessed");
   const { id } = req.params;
+  const { country, accountTypeId, lastname, firstname, email, username, contactnumber, active } = req.body || {};
 
   if (!id)
     return reply.status(400).send({
@@ -219,22 +246,52 @@ export const updateUser = async (
     });
 
   try {
+    // Check if user exists
+    const [existingUser] = await db.select()
+      .from(users)
+      .where(eq(users.id, id));
+
+    if (!existingUser)
+      return reply.status(404).send({
+        message: "User not found",
+      });
+
     await db.update(users)
-      .set(req.body)
+      .set({
+        country,
+        accountTypeId,
+        lastname,
+        firstname,
+        email,
+        username,
+        contactnumber,
+        active,
+      })
+      .where(eq(users.id, id));
+
+    const [updatedUser] = await db.select({
+      id: users.id,
+      userId: users.id,
+      country: users.country,
+      accountTypeId: users.accountTypeId,
+      lastname: users.lastname,
+      firstname: users.firstname,
+      email: users.email,
+      username: users.username,
+      contactnumber: users.contactnumber,
+      active: users.active,
+      createdAt: users.createdAt,
+      updatedAt: users.updatedAt,
+    })
+      .from(users)
       .where(eq(users.id, id));
 
     reply.status(200).send({
       message: `User with ID ${id} updated`,
+      data: toCamelCase(updatedUser),
     });
   } catch (err: unknown) {
     console.error(err);
-
-    // Check for record not found error (drizzle throws different errors)
-    if (err && typeof err === 'object' && 'code' in err && err.code === 'ER_ROW_IS_REFERENCED_2') {
-      return reply.status(404).send({
-        message: "User not found",
-      });
-    }
 
     reply.status(500).send({
       message: "Server error",
