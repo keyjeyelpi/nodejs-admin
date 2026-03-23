@@ -2,7 +2,7 @@ import process from "node:process";
 import type { FastifyRequest, FastifyReply } from "fastify";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
-import { eq, or, and } from "drizzle-orm";
+import { eq, or, lt } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { users, userSettings, userTokens } from "../db/schema/index.ts";
 import { decrypt } from "../utils/encryption.util.js";
@@ -10,7 +10,7 @@ import { toCamelCase } from "../utils/case-converter.util.ts";
 import { randomUUID } from "node:crypto";
 
 const JWT_SECRET = process.env.JWT_SECRET || "";
-const EXPIRATION_IN_MINUTES = 30;
+const EXPIRATION_IN_MINUTES = 10;
 const EXPIRES_AT = `${EXPIRATION_IN_MINUTES}m`;
 
 export const login = async (
@@ -83,7 +83,7 @@ export const login = async (
       });
 
     const token = jwt.sign(
-      { id: userResult.id, username: userResult.username },
+      { sub: userResult.id, username: userResult.username, role: userResult.accountTypeId || "user" },
       JWT_SECRET,
       {
         expiresIn: EXPIRES_AT,
@@ -127,6 +127,9 @@ export const refreshToken = async (
   }>,
   reply: FastifyReply
 ) => {
+  // Clean up expired tokens before processing
+  await cleanupExpiredTokensInternal();
+
   if (!req.body)
     return reply.status(400).send({
       message: "Request body is missing",
@@ -198,7 +201,7 @@ export const refreshToken = async (
 
     // Generate new access token
     const newAccessToken = jwt.sign(
-      { id: userResult.id, username: userResult.username },
+      { sub: userResult.id, username: userResult.username, role: userResult.accountTypeId || "user" },
       JWT_SECRET,
       {
         expiresIn: EXPIRES_AT,
@@ -230,6 +233,107 @@ export const refreshToken = async (
     return reply.status(500).send({
       message: "Server error",
       error: err,
+    });
+  }
+};
+
+export const logout = async (
+  req: FastifyRequest<{
+    Body: {
+      refreshToken?: string;
+    };
+  }>,
+  reply: FastifyReply
+) => {
+  // Clean up expired tokens before processing
+  await cleanupExpiredTokensInternal();
+
+  if (!req.body)
+    return reply.status(400).send({
+      message: "Request body is missing",
+    });
+
+  const { refreshToken: token } = req.body || {};
+
+  if (!token) {
+    console.warn("Refresh token is missing in request body");
+    return reply.status(400).send({
+      message: "Refresh token is required",
+    });
+  }
+
+  try {
+    // Find and delete the refresh token from the database
+    const tokenResult = await db
+      .select({
+        id: userTokens.id,
+        token: userTokens.token,
+        userID: userTokens.userID,
+        expiration: userTokens.expiration,
+      })
+      .from(userTokens)
+      .where(eq(userTokens.token, token))
+      .then((rows) => rows[0]);
+
+    if (!tokenResult) {
+      console.warn("Refresh token not found in database for logout:", token);
+      return reply.status(404).send({
+        message: "Refresh token not found",
+      });
+    }
+
+    // Delete the refresh token (logout)
+    await db.delete(userTokens).where(eq(userTokens.id, tokenResult.id));
+
+    reply.send({
+      message: "Logout successful",
+    });
+  } catch (err) {
+    console.error(err);
+    return reply.status(500).send({
+      message: "Server error",
+    });
+  }
+};
+
+// Internal function to clean up expired tokens (no reply sent)
+const cleanupExpiredTokensInternal = async (): Promise<void> => {
+  try {
+    const now = new Date();
+
+    // Delete all expired tokens
+    await db
+      .delete(userTokens)
+      .where(lt(userTokens.expiration, now));
+
+    console.log("Expired refresh tokens cleaned up");
+  } catch (err) {
+    console.error("Error cleaning up expired tokens:", err);
+  }
+};
+
+// Exported function for manual cleanup via API endpoint
+export const cleanupExpiredTokens = async (
+  req: FastifyRequest,
+  reply: FastifyReply
+) => {
+  try {
+    const now = new Date();
+
+    // Delete all expired tokens
+    const result = await db
+      .delete(userTokens)
+      .where(lt(userTokens.expiration, now));
+
+    console.log("Expired refresh tokens cleaned up");
+
+    return reply.send({
+      message: "Expired tokens cleanup completed",
+    });
+  } catch (err) {
+    console.error("Error cleaning up expired tokens:", err);
+    return reply.status(500).send({
+      message: "Server error during cleanup",
     });
   }
 };
