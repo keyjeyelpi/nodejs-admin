@@ -2,9 +2,8 @@ import { mysqlTable, varchar, int, boolean, text, datetime, mysqlEnum, timestamp
 import { sql } from "drizzle-orm";
 import { relations } from "drizzle-orm";
 
-export const accountType = mysqlTable("account_type", {
-  id: int("id").autoincrement().primaryKey(),
-  accountId: varchar("account_id", { length: 191 }).unique().notNull(),
+export const accountTypes = mysqlTable("account_types", {
+  id: varchar("id", { length: 191 }).primaryKey(),
   title: varchar("title", { length: 191 }).notNull(),
   description: text("description").notNull(),
   isEditable: boolean("is_editable").notNull(),
@@ -80,14 +79,14 @@ export const kanbanComments = mysqlTable("kanban_comments", {
 });
 
 // Relations
-export const accountTypeRelations = relations(accountType, ({ many }) => ({
+export const accountTypesRelations = relations(accountTypes, ({ many }) => ({
   users: many(users),
 }));
 
 export const usersRelations = relations(users, ({ one, many }) => ({
-  accountType: one(accountType, {
+  accountType: one(accountTypes, {
     fields: [users.accountTypeId],
-    references: [accountType.accountId],
+    references: [accountTypes.id],
   }),
   settings: one(userSettings, {
     fields: [users.id],

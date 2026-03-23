@@ -1,6 +1,6 @@
 import type { FastifyRequest, FastifyReply } from "fastify";
 import { db } from "../db/index.js";
-import { users, accountType } from "../db/schema.js";
+import { users, accountTypes } from "../db/schema.db.ts";
 import { desc, eq, asc, sql, or, and, like, type AnyColumn } from "drizzle-orm";
 import { toCamelCase } from "../utils/case-converter.util.ts";
 
@@ -83,15 +83,15 @@ export const fetchAllUsers = async (
       createdAt: users.createdAt,
       updatedAt: users.updatedAt,
       accountType: {
-        title: accountType.title,
-        isEditable: accountType.isEditable,
-        isDeletable: accountType.isDeletable,
-        allowedToEdit: accountType.allowedToEdit,
-        isSelectable: accountType.isSelectable,
+        title: accountTypes.title,
+        isEditable: accountTypes.isEditable,
+        isDeletable: accountTypes.isDeletable,
+        allowedToEdit: accountTypes.allowedToEdit,
+        isSelectable: accountTypes.isSelectable,
       },
     })
       .from(users)
-      .leftJoin(accountType, eq(users.accountTypeId, accountType.accountId))
+      .leftJoin(accountTypes, eq(users.accountTypeId, accountTypes.id))
       .where(whereCondition)
       .orderBy(sortOrder === "asc" ? asc(sortByColumn) : desc(sortByColumn))
       .limit(limit)
@@ -141,15 +141,15 @@ export const fetchUserByAccountID = async (
       createdAt: users.createdAt,
       updatedAt: users.updatedAt,
       accountType: {
-        title: accountType.title,
-        isEditable: accountType.isEditable,
-        isDeletable: accountType.isDeletable,
-        allowedToEdit: accountType.allowedToEdit,
-        isSelectable: accountType.isSelectable,
+        title: accountTypes.title,
+        isEditable: accountTypes.isEditable,
+        isDeletable: accountTypes.isDeletable,
+        allowedToEdit: accountTypes.allowedToEdit,
+        isSelectable: accountTypes.isSelectable,
       },
     })
       .from(users)
-      .leftJoin(accountType, eq(users.accountTypeId, accountType.accountId))
+      .leftJoin(accountTypes, eq(users.accountTypeId, accountTypes.id))
       .where(eq(users.id, id))
       .then(rows => rows[0]);
 

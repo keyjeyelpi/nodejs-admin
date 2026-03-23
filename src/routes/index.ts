@@ -7,7 +7,7 @@ import userSettingsRoutes from "./user-settings.route.ts";
 import { error404, globalErrorHandler } from "../controllers/index.ts";
 
 export default async function routes(fastify: FastifyInstance) {
-  fastify.register(accountRoutes, { prefix: "/account" });
+  fastify.register(accountRoutes, { prefix: "/accounts" });
   fastify.register(authRoutes, { prefix: "/auth" });
   fastify.register(kanbanRoutes, { prefix: "/kanban" });
   fastify.register(userRoutes, { prefix: "/users" });
