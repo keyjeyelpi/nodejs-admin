@@ -5,7 +5,7 @@ import {
   fetchAllUsers,
   fetchUserByAccountID,
   updateUser,
-} from "../src/controllers/user.controller.ts";
+} from "../src/controllers/users.controller.ts";
 
 jest.mock("../src/db/index.js", () => ({
   db: {

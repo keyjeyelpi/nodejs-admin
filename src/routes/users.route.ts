@@ -7,7 +7,7 @@ import {
   fetchAllUsers,
   fetchUserByAccountID,
   updateUser,
-} from "../controllers/user.controller.ts";
+} from "../controllers/users.controller.ts";
 
 interface QueryParams {
   page?: string;
@@ -16,7 +16,7 @@ interface QueryParams {
   sortBy?: string;
 }
 
-export default async function userRoutes(fastify: FastifyInstance) {
+export default async function usersRoutes(fastify: FastifyInstance) {
   fastify.get<{ Querystring: QueryParams }>(
     "/",
     { preHandler: [authenticateJWT] },

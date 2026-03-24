@@ -1,5 +1,5 @@
 import type { FastifyRequest, FastifyReply } from "fastify";
-import { db } from "../db/index.js";
+import { db } from "../db/index.ts";
 import {
   users,
   roles,
@@ -9,7 +9,7 @@ import {
 import { desc, eq, asc, sql, or, and, like, type AnyColumn } from "drizzle-orm";
 import { toCamelCase } from "../utils/case-converter.util.ts";
 import type { QueryParams } from "../interfaces/general.interface.ts";
-import type { UserBody } from "../interfaces/user.interface.js";
+import type { UserBody } from "../interfaces/user.interface.ts";
 
 // Mapping for sortable columns
 const sortableColumns: Record<string, AnyColumn> = {

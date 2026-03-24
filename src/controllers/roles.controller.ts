@@ -1,5 +1,5 @@
 import type { FastifyRequest, FastifyReply } from "fastify";
-import { db } from "../db/index.js";
+import { db } from "../db/index.ts";
 import { roles } from "../db/schema/index.ts";
 
 export const fetchAllAccounts = async (
