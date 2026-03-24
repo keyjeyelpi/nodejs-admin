@@ -35,6 +35,7 @@ export const fetchAllUsers = async (
     // Build search condition
     const searchCondition = search
       ? or(
+        eq(users.id, search),
         like(users.lastname, `%${search}%`),
         like(users.firstname, `%${search}%`),
         like(users.email, `%${search}%`),

@@ -66,10 +66,10 @@ export async function seed() {
       accountTypeId: randomAccountType.id,
       lastname: lastName!,
       firstname: firstName!,
-      email: `${firstName!.toLowerCase()}.${lastName!.toLowerCase()}${i}@example.com`,
-      username: `${firstName!.toLowerCase()}${lastName!.toLowerCase()}${i}`,
+      email: faker.internet.email({ firstName: firstName.toLowerCase(), lastName: lastName.toLowerCase() }),
+      username: faker.internet.username({ firstName: firstName.toLowerCase(), lastName: lastName.toLowerCase() }),
       password: password,
-      contactnumber: `+1 555 ${String(1000 + i).padStart(4, "0")}`,
+      contactnumber: faker.phone.number({ style: "international" }),
       active: active,
     });
   }
