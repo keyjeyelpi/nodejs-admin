@@ -1,6 +1,6 @@
 import type { FastifyRequest, FastifyReply } from "fastify";
 import { db } from "../db/index.js";
-import { users, accountTypes } from "../db/schema/index.ts";
+import { users, roles, rolePermissions, permissions } from "../db/schema/index.ts";
 import { desc, eq, asc, sql, or, and, like, type AnyColumn } from "drizzle-orm";
 import { toCamelCase } from "../utils/case-converter.util.ts";
 import type { QueryParams } from "../interfaces/general.interface.ts";
@@ -22,7 +22,6 @@ export const fetchAllUsers = async (
   req: FastifyRequest<{ Querystring: QueryParams }>,
   reply: FastifyReply
 ) => {
-  console.log("fetchAllUsers accessed");
   try {
     const page = parseInt(req.query.page || "1");
     const limit = parseInt(req.query.limit || "12");
@@ -45,6 +44,7 @@ export const fetchAllUsers = async (
       )
       : undefined;
 
+
     // Build active filter condition
     // active === 0: return all users
     // active === 1: return only active users
@@ -63,41 +63,40 @@ export const fetchAllUsers = async (
         : activeCondition
       : searchCondition;
 
-    const allUsers = await db.select({
-      id: users.id,
-      userId: users.id,
-      country: users.country,
-      accountTypeId: users.accountTypeId,
-      lastname: users.lastname,
-      firstname: users.firstname,
-      email: users.email,
-      username: users.username,
-      contactnumber: users.contactnumber,
-      active: users.active,
-      createdAt: users.createdAt,
-      updatedAt: users.updatedAt,
-      accountType: {
-        title: accountTypes.title,
-        isEditable: accountTypes.isEditable,
-        isDeletable: accountTypes.isDeletable,
-        allowedToEdit: accountTypes.allowedToEdit,
-        isSelectable: accountTypes.isSelectable,
-      },
-    })
+    // 🧠 Main query (MySQL-safe)
+    const allUsers = await db
+      .select({
+        id: users.id,
+        country: users.country,
+        lastname: users.lastname,
+        firstname: users.firstname,
+        email: users.email,
+        contactnumber: users.contactnumber,
+        active: users.active,
+        updatedAt: users.updatedAt,
+        role: {
+          id: roles.id,
+          title: roles.title,
+          description: roles.description,
+        },
+      })
       .from(users)
-      .leftJoin(accountTypes, eq(users.accountTypeId, accountTypes.id))
+      .leftJoin(roles, eq(users.roleId, roles.id))
       .where(whereCondition)
       .orderBy(sortOrder === "asc" ? asc(sortByColumn) : desc(sortByColumn))
       .limit(limit)
       .offset(skip);
 
+    // 📊 Total count (separate lightweight query)
     const totalCountResult = await db
       .select({ count: sql<number>`count(*)` })
       .from(users)
       .where(whereCondition);
+
     const totalCount = totalCountResult[0]?.count || 0;
 
-    reply.status(200).send({
+    // 📦 Response
+    return reply.status(200).send({
       data: toCamelCase(allUsers),
       total: totalCount,
       pageTotal: Math.ceil(totalCount / limit),
@@ -106,7 +105,7 @@ export const fetchAllUsers = async (
     });
   } catch (err) {
     console.error(err);
-    reply.status(500).send({
+    return reply.status(500).send({
       message: "Server error",
       error: err,
     });
@@ -118,47 +117,80 @@ export const fetchUserByAccountID = async (
   reply: FastifyReply
 ) => {
   console.log("fetchUserByAccountID accessed");
+
   const { id } = req.params;
 
   try {
-    const user = await db.select({
-      id: users.id,
-      userId: users.id,
-      country: users.country,
-      accountTypeId: users.accountTypeId,
-      lastname: users.lastname,
-      firstname: users.firstname,
-      email: users.email,
-      username: users.username,
-      contactnumber: users.contactnumber,
-      active: users.active,
-      createdAt: users.createdAt,
-      updatedAt: users.updatedAt,
-      accountType: {
-        title: accountTypes.title,
-        isEditable: accountTypes.isEditable,
-        isDeletable: accountTypes.isDeletable,
-        allowedToEdit: accountTypes.allowedToEdit,
-        isSelectable: accountTypes.isSelectable,
-      },
-    })
+    const user = await db
+      .select({
+        id: users.id,
+        country: users.country,
+        lastname: users.lastname,
+        firstname: users.firstname,
+        email: users.email,
+        username: users.username,
+        contactnumber: users.contactnumber,
+        active: users.active,
+        createdAt: users.createdAt,
+        updatedAt: users.updatedAt,
+        role: {
+          id: roles.id,
+          title: roles.title,
+          description: roles.description,
+        },
+        permissions: sql<string>`
+        COALESCE(
+          JSON_ARRAYAGG(
+            CASE 
+              WHEN ${permissions.key} IS NOT NULL 
+              THEN ${permissions.key}
+            END
+          ),
+          JSON_ARRAY()
+        )
+      `,
+      })
       .from(users)
-      .leftJoin(accountTypes, eq(users.accountTypeId, accountTypes.id))
+      .leftJoin(roles, eq(users.roleId, roles.id))
+      .leftJoin(rolePermissions, eq(rolePermissions.roleId, roles.id))
+      .leftJoin(permissions, eq(rolePermissions.permissionId, permissions.id))
       .where(eq(users.id, id))
+      .groupBy(users.id, roles.id)
       .then(rows => rows[0]);
 
-    if (!user)
+    if (!user) {
       return reply.status(404).send({
         message: "User not found",
       });
+    }
 
-    reply.status(200).send({
+    // 🧹 Normalize permissions to string[]
+    let perms: string[] = [];
+
+    if (Array.isArray(user.permissions)) {
+      perms = user.permissions;
+    } else if (typeof user.permissions === "string") {
+      try {
+        perms = JSON.parse(user.permissions);
+      } catch {
+        perms = [];
+      }
+    }
+
+    // Only return specified fields: firstname, lastname, country, active, role, email, updatedAt
+    const cleanedUser = {
+      ...user,
+      permissions: [...new Set(perms.filter(Boolean))],
+    };
+
+    return reply.status(200).send({
       message: `Get user with ID ${id}`,
-      data: toCamelCase(user),
+      data: toCamelCase(cleanedUser),
     });
+
   } catch (err) {
     console.error(err);
-    reply.status(500).send({
+    return reply.status(500).send({
       message: "Server error",
       error: err,
     });
@@ -170,10 +202,10 @@ export const createUser = async (
   reply: FastifyReply
 ) => {
   console.log("createUser accessed");
-  const { email, username, password, country, accountTypeId, lastname, firstname, contactnumber, active } = req.body || {};
+  const { email, username, password, country, roleId, lastname, firstname, contactnumber, active } = req.body || {};
 
   try {
-    if (!email || !username || !password || !country || !accountTypeId || !lastname || !firstname || !contactnumber)
+    if (!email || !username || !password || !country || !roleId || !lastname || !firstname || !contactnumber)
       return reply.status(400).send({
         message: "All fields are required",
       });
@@ -195,7 +227,7 @@ export const createUser = async (
         username,
         password,
         country,
-        accountTypeId,
+        roleId,
         lastname,
         firstname,
         contactnumber,
@@ -207,7 +239,7 @@ export const createUser = async (
       id: users.id,
       userId: users.id,
       country: users.country,
-      accountTypeId: users.accountTypeId,
+      roleId: users.roleId,
       lastname: users.lastname,
       firstname: users.firstname,
       email: users.email,
@@ -239,7 +271,7 @@ export const updateUser = async (
 ) => {
   console.log("updateUser accessed");
   const { id } = req.params;
-  const { country, accountTypeId, lastname, firstname, email, username, contactnumber, active } = req.body || {};
+  const { country, roleId, lastname, firstname, email, username, contactnumber, active } = req.body || {};
 
   if (!id)
     return reply.status(400).send({
@@ -260,13 +292,14 @@ export const updateUser = async (
     await db.update(users)
       .set({
         country,
-        accountTypeId,
+        roleId,
         lastname,
         firstname,
         email,
         username,
         contactnumber,
         active,
+        updatedAt: new Date(),
       })
       .where(eq(users.id, id));
 
@@ -274,7 +307,7 @@ export const updateUser = async (
       id: users.id,
       userId: users.id,
       country: users.country,
-      accountTypeId: users.accountTypeId,
+      roleId: users.roleId,
       lastname: users.lastname,
       firstname: users.firstname,
       email: users.email,

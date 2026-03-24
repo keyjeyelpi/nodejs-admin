@@ -4,7 +4,7 @@ import { sql } from "drizzle-orm";
 export const users = mysqlTable("users", {
   id: varchar("id", { length: 191 }).primaryKey(),
   country: varchar("country", { length: 191 }).notNull(),
-  accountTypeId: varchar("account_type_id", { length: 191 }).notNull(),
+  roleId: varchar("role_id", { length: 191 }).notNull(),
   lastname: varchar("lastname", { length: 191 }).notNull(),
   firstname: varchar("firstname", { length: 191 }).notNull(),
   email: varchar("email", { length: 191 }).unique().notNull(),

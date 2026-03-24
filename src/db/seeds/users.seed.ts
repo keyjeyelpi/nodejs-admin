@@ -1,5 +1,5 @@
 import { db } from "../index.ts";
-import { users, accountTypes } from "../schema/index.ts";
+import { users, roles } from "../schema/index.ts";
 import bcrypt from "bcryptjs";
 import { v4 as uuidv4 } from "uuid";
 import { faker } from "@faker-js/faker";
@@ -7,11 +7,11 @@ import { faker } from "@faker-js/faker";
 export async function seed() {
   console.log("Seeding users...");
 
-  // Check if account types exist
-  const accountTypesList = await db.select().from(accountTypes);
+  // Check if roles exist
+  const rolesList = await db.select().from(roles);
 
-  if (accountTypesList.length === 0) {
-    console.error("No account types found. Please run account-types.seed.ts first.");
+  if (rolesList.length === 0) {
+    console.error("No roles found. Please run roles.seed.ts first.");
     process.exit(1);
   }
 
@@ -24,18 +24,22 @@ export async function seed() {
     return;
   }
 
-  // Get the first account type (typically admin)
-  const highestAccountType = accountTypesList[0]!;
-  console.log("Using account type:", highestAccountType.title);
+  // Get System Administrator role for Kim Joseph
+  const systemAdminRole = rolesList.find(r => r.title === "System Administrator");
+  if (!systemAdminRole) {
+    console.error("System Administrator role not found.");
+    process.exit(1);
+  }
+  console.log("Using System Administrator role for Kim Joseph");
 
-  // Create Kim Joseph Penaloza as the first user
+  // Create Kim Joseph Penaloza as the first user with System Administrator role
   const kimId = uuidv4();
   const hashedPassword = await bcrypt.hash("keyjeyelpi", 10);
 
   await db.insert(users).values({
     id: kimId,
     country: "PH",
-    accountTypeId: highestAccountType.id,
+    roleId: systemAdminRole.id,
     lastname: "Penaloza",
     firstname: "Kim Joseph",
     email: "kj.penaloza@gmail.com",
@@ -45,7 +49,10 @@ export async function seed() {
     active: true,
   });
 
-  console.log("Created Kim Joseph Penaloza with highest account type");
+  console.log("Created Kim Joseph Penaloza with System Administrator role");
+
+  // Get other roles for random users (exclude System Administrator)
+  const otherRoles = rolesList.filter(r => r.title !== "System Administrator");
 
   // Create 49 additional users
   for (let i = 0; i < 99; i++) {
@@ -55,15 +62,15 @@ export async function seed() {
     const country = faker.location.countryCode();
     const active = i % 2 === 0;
 
-    // Pick a random account type
-    const randomAccountType = accountTypesList[Math.floor(Math.random() * accountTypesList.length)]!;
+    // Pick a random role (from other roles, not System Administrator)
+    const randomRole = otherRoles[Math.floor(Math.random() * otherRoles.length)]!;
 
     const password = await bcrypt.hash("password123", 10);
 
     await db.insert(users).values({
       id: userId,
       country: country,
-      accountTypeId: randomAccountType.id,
+      roleId: randomRole.id,
       lastname: lastName!,
       firstname: firstName!,
       email: faker.internet.email({ firstName: firstName.toLowerCase(), lastName: lastName.toLowerCase() }),

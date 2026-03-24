@@ -1,13 +1,13 @@
 import type { FastifyRequest, FastifyReply } from "fastify";
 import { db } from "../db/index.js";
-import { accountTypes } from "../db/schema/index.ts";
+import { roles } from "../db/schema/index.ts";
 
 export const fetchAllAccounts = async (
   _req: FastifyRequest,
   reply: FastifyReply
 ) => {
   try {
-    const accounts = await db.select().from(accountTypes);
+    const accounts = await db.select().from(roles);
 
     reply.status(200).send({
       message: "",

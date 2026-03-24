@@ -1,7 +1,7 @@
 export interface UserBody {
   userId?: string;
   country: string;
-  accountTypeId: string;
+  roleId: string;
   lastname: string;
   firstname: string;
   email: string;

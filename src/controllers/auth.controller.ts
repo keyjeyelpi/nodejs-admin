@@ -40,7 +40,7 @@ export const login = async (
         id: users.id,
         userId: users.id,
         country: users.country,
-        accountTypeId: users.accountTypeId,
+        roleId: users.roleId,
         lastname: users.lastname,
         firstname: users.firstname,
         email: users.email,
@@ -83,7 +83,7 @@ export const login = async (
       });
 
     const token = jwt.sign(
-      { sub: userResult.id, username: userResult.username, role: userResult.accountTypeId || "user" },
+      { sub: userResult.id, username: userResult.username, role: userResult.roleId || "user" },
       JWT_SECRET,
       {
         expiresIn: EXPIRES_AT,
@@ -182,7 +182,7 @@ export const refreshToken = async (
         id: users.id,
         userId: users.id,
         country: users.country,
-        accountTypeId: users.accountTypeId,
+        roleId: users.roleId,
         lastname: users.lastname,
         firstname: users.firstname,
         email: users.email,
@@ -201,7 +201,7 @@ export const refreshToken = async (
 
     // Generate new access token
     const newAccessToken = jwt.sign(
-      { sub: userResult.id, username: userResult.username, role: userResult.accountTypeId || "user" },
+      { sub: userResult.id, username: userResult.username, role: userResult.roleId || "user" },
       JWT_SECRET,
       {
         expiresIn: EXPIRES_AT,
