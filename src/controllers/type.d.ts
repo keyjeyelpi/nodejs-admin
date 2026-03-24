@@ -1,16 +1,16 @@
 // KANBAN CONTROLLER TYPES
 export enum Priority {
-  URGENT = 'URGENT',
-  HIGH = 'HIGH',
-  MEDIUM = 'MEDIUM',
-  LOW = 'LOW',
+  URGENT = "URGENT",
+  HIGH = "HIGH",
+  MEDIUM = "MEDIUM",
+  LOW = "LOW",
 }
 
 export enum Status {
-  TO_DO = 'TO_DO',
-  DONE = 'DONE',
-  REVIEW = 'REVIEW',
-  PROCESS = 'PROCESS',
+  TO_DO = "TO_DO",
+  DONE = "DONE",
+  REVIEW = "REVIEW",
+  PROCESS = "PROCESS",
 }
 
 export interface CreateBoardRequest {

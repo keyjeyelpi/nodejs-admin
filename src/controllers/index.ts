@@ -2,9 +2,7 @@ import type { FastifyRequest, FastifyReply } from "fastify";
 import type { ErrorResponse } from "../interfaces/error.interface.ts";
 
 export const error404 = (req: FastifyRequest, reply: FastifyReply) => {
-  console.log(
-    `[${new Date().toISOString()}] ${req.method} ${req.url} -> 404`
-  );
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} -> 404`);
   reply.status(404).send({
     message: "API endpoint not found",
     error: "Not Found",

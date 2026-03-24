@@ -59,11 +59,14 @@ export default async function kanbanRoutes(fastify: FastifyInstance) {
     deleteBoard
   );
 
-  fastify.post<{ Body: { boardId?: string; name?: string; disableAdd?: boolean; order?: number } }>(
-    "/column",
-    { preHandler: [authenticateJWT, signature] },
-    addColumn
-  );
+  fastify.post<{
+    Body: {
+      boardId?: string;
+      name?: string;
+      disableAdd?: boolean;
+      order?: number;
+    };
+  }>("/column", { preHandler: [authenticateJWT, signature] }, addColumn);
 
   fastify.post<{ Body: Record<string, unknown> }>(
     "/card",
@@ -71,11 +74,9 @@ export default async function kanbanRoutes(fastify: FastifyInstance) {
     addCard
   );
 
-  fastify.put<{ Body: { cardId?: string; newColumnId?: string; newIndex?: number } }>(
-    "/card/move",
-    { preHandler: [authenticateJWT, signature] },
-    moveCard
-  );
+  fastify.put<{
+    Body: { cardId?: string; newColumnId?: string; newIndex?: number };
+  }>("/card/move", { preHandler: [authenticateJWT, signature] }, moveCard);
 
   fastify.put<{ Params: { id: string }; Body: Record<string, unknown> }>(
     "/column/:id",
@@ -121,11 +122,13 @@ export default async function kanbanRoutes(fastify: FastifyInstance) {
   );
 
   // Reply routes
-  fastify.post<{ Body: { kanbanCardId?: string; replyForKanbanCommentId?: string; text?: string } }>(
-    "/reply",
-    { preHandler: [authenticateJWT, signature] },
-    addReply
-  );
+  fastify.post<{
+    Body: {
+      kanbanCardId?: string;
+      replyForKanbanCommentId?: string;
+      text?: string;
+    };
+  }>("/reply", { preHandler: [authenticateJWT, signature] }, addReply);
 
   fastify.get<{ Params: { commentId: string } }>(
     "/comment/:commentId/replies",

@@ -1,4 +1,4 @@
-// Table schemas  
+// Table schemas
 export { users } from "./users.schema.ts";
 export { userSettings } from "./user-settings.schema.ts";
 export { userTokens } from "./user-tokens.schema.ts";
@@ -10,7 +10,7 @@ export { roles } from "./roles.schema.ts";
 export { permissions } from "./permissions.schema.ts";
 export { rolePermissions } from "./role-permissions.schema.ts";
 
-// Relations  
+// Relations
 export { usersRelations } from "./relations.schema.ts";
 export { userSettingsRelations } from "./relations.schema.ts";
 export { userTokensRelations } from "./relations.schema.ts";

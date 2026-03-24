@@ -83,7 +83,11 @@ export const login = async (
       });
 
     const token = jwt.sign(
-      { sub: userResult.id, username: userResult.username, role: userResult.roleId || "user" },
+      {
+        sub: userResult.id,
+        username: userResult.username,
+        role: userResult.roleId || "user",
+      },
       JWT_SECRET,
       {
         expiresIn: EXPIRES_AT,
@@ -201,7 +205,11 @@ export const refreshToken = async (
 
     // Generate new access token
     const newAccessToken = jwt.sign(
-      { sub: userResult.id, username: userResult.username, role: userResult.roleId || "user" },
+      {
+        sub: userResult.id,
+        username: userResult.username,
+        role: userResult.roleId || "user",
+      },
       JWT_SECRET,
       {
         expiresIn: EXPIRES_AT,
@@ -302,9 +310,7 @@ const cleanupExpiredTokensInternal = async (): Promise<void> => {
     const now = new Date();
 
     // Delete all expired tokens
-    await db
-      .delete(userTokens)
-      .where(lt(userTokens.expiration, now));
+    await db.delete(userTokens).where(lt(userTokens.expiration, now));
 
     console.log("Expired refresh tokens cleaned up");
   } catch (err) {

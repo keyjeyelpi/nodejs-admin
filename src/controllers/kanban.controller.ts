@@ -19,32 +19,41 @@ type Status = (typeof VALID_STATUSES)[number];
 
 const isUndefined = (a: unknown): a is undefined => typeof a === "undefined";
 
-export const getAllKanbanBoards = async (req: FastifyRequest, reply: FastifyReply) => {
+export const getAllKanbanBoards = async (
+  req: FastifyRequest,
+  reply: FastifyReply
+) => {
   console.log("[KanbanController] getAllKanbanBoards accessed");
   try {
-    const query = req.query as { page?: string; limit?: string; search?: string };
+    const query = req.query as {
+      page?: string;
+      limit?: string;
+      search?: string;
+    };
     const page = parseInt(query.page || "1");
     const limit = parseInt(query.limit || "10");
     const skip = (page - 1) * limit;
     const search = query.search;
 
     // Get all boards with their columns and cards
-    const allBoards = await db.select({
-      id: kanbanBoards.id,
-      name: kanbanBoards.name,
-    })
+    const allBoards = await db
+      .select({
+        id: kanbanBoards.id,
+        name: kanbanBoards.name,
+      })
       .from(kanbanBoards)
       .orderBy(asc(kanbanBoards.name));
 
     // Get columns for each board
     const boardsWithColumns = await Promise.all(
       allBoards.map(async (board) => {
-        const columns = await db.select({
-          id: kanbanColumns.id,
-          name: kanbanColumns.name,
-          disableAdd: kanbanColumns.disableAdd,
-          order: kanbanColumns.order,
-        })
+        const columns = await db
+          .select({
+            id: kanbanColumns.id,
+            name: kanbanColumns.name,
+            disableAdd: kanbanColumns.disableAdd,
+            order: kanbanColumns.order,
+          })
           .from(kanbanColumns)
           .where(eq(kanbanColumns.boardId, board.id))
           .orderBy(asc(kanbanColumns.order));
@@ -52,16 +61,17 @@ export const getAllKanbanBoards = async (req: FastifyRequest, reply: FastifyRepl
         // Get cards for each column
         const columnsWithCards = await Promise.all(
           columns.map(async (column) => {
-            const cards = await db.select({
-              id: kanbanCards.id,
-              title: kanbanCards.title,
-              description: kanbanCards.description,
-              categoryTitle: kanbanCards.categoryTitle,
-              categoryColor: kanbanCards.categoryColor,
-              priority: kanbanCards.priority,
-              status: kanbanCards.status,
-              likes: kanbanCards.likes,
-            })
+            const cards = await db
+              .select({
+                id: kanbanCards.id,
+                title: kanbanCards.title,
+                description: kanbanCards.description,
+                categoryTitle: kanbanCards.categoryTitle,
+                categoryColor: kanbanCards.categoryColor,
+                priority: kanbanCards.priority,
+                status: kanbanCards.status,
+                likes: kanbanCards.likes,
+              })
               .from(kanbanCards)
               .where(eq(kanbanCards.kanbanColumnId, column.id))
               .orderBy(asc(kanbanCards.title));
@@ -69,16 +79,18 @@ export const getAllKanbanBoards = async (req: FastifyRequest, reply: FastifyRepl
             // Get comments for each card
             const cardsWithComments = await Promise.all(
               cards.map(async (card) => {
-                const comments = await db.select({
-                  id: kanbanComments.id,
-                  text: kanbanComments.text,
-                  userId: kanbanComments.userId,
-                  kanbanCardId: kanbanComments.kanbanCardId,
-                  replyForKanbanCommentId: kanbanComments.replyForKanbanCommentId,
-                  firstname: users.firstname,
-                  lastname: users.lastname,
-                  username: users.username,
-                })
+                const comments = await db
+                  .select({
+                    id: kanbanComments.id,
+                    text: kanbanComments.text,
+                    userId: kanbanComments.userId,
+                    kanbanCardId: kanbanComments.kanbanCardId,
+                    replyForKanbanCommentId:
+                      kanbanComments.replyForKanbanCommentId,
+                    firstname: users.firstname,
+                    lastname: users.lastname,
+                    username: users.username,
+                  })
                   .from(kanbanComments)
                   .leftJoin(users, eq(kanbanComments.userId, users.id))
                   .where(eq(kanbanComments.kanbanCardId, card.id));
@@ -159,7 +171,10 @@ export const getAllKanbanBoards = async (req: FastifyRequest, reply: FastifyRepl
   }
 };
 
-export const getBoardList = async (req: FastifyRequest, reply: FastifyReply) => {
+export const getBoardList = async (
+  req: FastifyRequest,
+  reply: FastifyReply
+) => {
   console.log("[KanbanController] getBoardList accessed");
   try {
     const query = req.query as { page?: string; limit?: string };
@@ -167,10 +182,11 @@ export const getBoardList = async (req: FastifyRequest, reply: FastifyReply) => 
     const limit = parseInt(query.limit || "10");
     const skip = (page - 1) * limit;
 
-    const allBoards = await db.select({
-      id: kanbanBoards.id,
-      name: kanbanBoards.name,
-    })
+    const allBoards = await db
+      .select({
+        id: kanbanBoards.id,
+        name: kanbanBoards.name,
+      })
       .from(kanbanBoards)
       .orderBy(asc(kanbanBoards.name));
 
@@ -212,13 +228,14 @@ export const getBoardById = async (
     });
 
   try {
-    const board = await db.select({
-      id: kanbanBoards.id,
-      name: kanbanBoards.name,
-    })
+    const board = await db
+      .select({
+        id: kanbanBoards.id,
+        name: kanbanBoards.name,
+      })
       .from(kanbanBoards)
       .where(eq(kanbanBoards.id, id))
-      .then(rows => rows[0]);
+      .then((rows) => rows[0]);
 
     if (!board)
       return reply.status(404).send({
@@ -238,7 +255,10 @@ export const getBoardById = async (
   }
 };
 
-export const getKanbanBoardById = async (req: FastifyRequest, reply: FastifyReply) => {
+export const getKanbanBoardById = async (
+  req: FastifyRequest,
+  reply: FastifyReply
+) => {
   console.log("[KanbanController] getKanbanBoardById accessed");
   const params = req.params as { id?: string };
   const { id } = params;
@@ -253,50 +273,57 @@ export const getKanbanBoardById = async (req: FastifyRequest, reply: FastifyRepl
     });
 
   try {
-    const board = await db.select({
-      id: kanbanBoards.id,
-      name: kanbanBoards.name,
-    })
+    const board = await db
+      .select({
+        id: kanbanBoards.id,
+        name: kanbanBoards.name,
+      })
       .from(kanbanBoards)
       .where(eq(kanbanBoards.id, id))
-      .then(rows => rows[0]);
+      .then((rows) => rows[0]);
 
     if (!board)
       return reply.status(404).send({
         message: "Kanban board not found",
       });
 
-    const columns = await db.select({
-      id: kanbanColumns.id,
-      name: kanbanColumns.name,
-      disableAdd: kanbanColumns.disableAdd,
-      order: kanbanColumns.order,
-    })
+    const columns = await db
+      .select({
+        id: kanbanColumns.id,
+        name: kanbanColumns.name,
+        disableAdd: kanbanColumns.disableAdd,
+        order: kanbanColumns.order,
+      })
       .from(kanbanColumns)
       .where(eq(kanbanColumns.boardId, id))
       .orderBy(asc(kanbanColumns.order));
 
     // Count total cards
-    const totalCardCountResult = await db.select({
-      count: sql<number>`count(*)`,
-    })
+    const totalCardCountResult = await db
+      .select({
+        count: sql<number>`count(*)`,
+      })
       .from(kanbanCards)
-      .innerJoin(kanbanColumns, eq(kanbanCards.kanbanColumnId, kanbanColumns.id))
+      .innerJoin(
+        kanbanColumns,
+        eq(kanbanCards.kanbanColumnId, kanbanColumns.id)
+      )
       .where(eq(kanbanColumns.boardId, id));
     const totalCardCount = totalCardCountResult[0]?.count || 0;
 
     const columnsWithCards = await Promise.all(
       columns.map(async (column) => {
-        const cards = await db.select({
-          id: kanbanCards.id,
-          title: kanbanCards.title,
-          description: kanbanCards.description,
-          categoryTitle: kanbanCards.categoryTitle,
-          categoryColor: kanbanCards.categoryColor,
-          priority: kanbanCards.priority,
-          status: kanbanCards.status,
-          likes: kanbanCards.likes,
-        })
+        const cards = await db
+          .select({
+            id: kanbanCards.id,
+            title: kanbanCards.title,
+            description: kanbanCards.description,
+            categoryTitle: kanbanCards.categoryTitle,
+            categoryColor: kanbanCards.categoryColor,
+            priority: kanbanCards.priority,
+            status: kanbanCards.status,
+            likes: kanbanCards.likes,
+          })
           .from(kanbanCards)
           .where(eq(kanbanCards.kanbanColumnId, column.id))
           .orderBy(asc(kanbanCards.title))
@@ -305,17 +332,18 @@ export const getKanbanBoardById = async (req: FastifyRequest, reply: FastifyRepl
 
         const cardsWithComments = await Promise.all(
           cards.map(async (card) => {
-            const comments = await db.select({
-              id: kanbanComments.id,
-              text: kanbanComments.text,
-              userId: kanbanComments.userId,
-              kanbanCardId: kanbanComments.kanbanCardId,
-              replyForKanbanCommentId: kanbanComments.replyForKanbanCommentId,
-              createdAt: kanbanComments.createdAt,
-              firstname: users.firstname,
-              lastname: users.lastname,
-              username: users.username,
-            })
+            const comments = await db
+              .select({
+                id: kanbanComments.id,
+                text: kanbanComments.text,
+                userId: kanbanComments.userId,
+                kanbanCardId: kanbanComments.kanbanCardId,
+                replyForKanbanCommentId: kanbanComments.replyForKanbanCommentId,
+                createdAt: kanbanComments.createdAt,
+                firstname: users.firstname,
+                lastname: users.lastname,
+                username: users.username,
+              })
               .from(kanbanComments)
               .leftJoin(users, eq(kanbanComments.userId, users.id))
               .where(eq(kanbanComments.kanbanCardId, card.id))
@@ -428,10 +456,11 @@ export const createBoard = async (
       name: name.trim(),
     });
 
-    const newBoard = await db.select()
+    const newBoard = await db
+      .select()
       .from(kanbanBoards)
       .where(eq(kanbanBoards.id, boardId))
-      .then(rows => rows[0]);
+      .then((rows) => rows[0]);
 
     reply.status(201).send({
       message: "Board created successfully",
@@ -465,14 +494,16 @@ export const updateBoard = async (
         message: "Board name is required",
       });
 
-    await db.update(kanbanBoards)
+    await db
+      .update(kanbanBoards)
       .set({ name: name.trim() })
       .where(eq(kanbanBoards.id, id));
 
-    const updatedBoard = await db.select()
+    const updatedBoard = await db
+      .select()
       .from(kanbanBoards)
       .where(eq(kanbanBoards.id, id))
-      .then(rows => rows[0]);
+      .then((rows) => rows[0]);
 
     if (!updatedBoard)
       return reply.status(404).send({
@@ -506,18 +537,18 @@ export const deleteBoard = async (
         message: "Board id is required",
       });
 
-    const existingBoard = await db.select()
+    const existingBoard = await db
+      .select()
       .from(kanbanBoards)
       .where(eq(kanbanBoards.id, id))
-      .then(rows => rows[0]);
+      .then((rows) => rows[0]);
 
     if (!existingBoard)
       return reply.status(404).send({
         message: "Board not found",
       });
 
-    await db.delete(kanbanBoards)
-      .where(eq(kanbanBoards.id, id));
+    await db.delete(kanbanBoards).where(eq(kanbanBoards.id, id));
 
     reply.status(200).send({
       message: `Board with ID ${id} deleted`,
@@ -532,7 +563,14 @@ export const deleteBoard = async (
 };
 
 export const addColumn = async (
-  req: FastifyRequest<{ Body: { boardId?: string; name?: string; disableAdd?: boolean; order?: number } }>,
+  req: FastifyRequest<{
+    Body: {
+      boardId?: string;
+      name?: string;
+      disableAdd?: boolean;
+      order?: number;
+    };
+  }>,
   reply: FastifyReply
 ) => {
   console.log("[KanbanController] addColumn accessed");
@@ -553,10 +591,11 @@ export const addColumn = async (
       order: order || 0,
     });
 
-    const newColumn = await db.select()
+    const newColumn = await db
+      .select()
       .from(kanbanColumns)
       .where(eq(kanbanColumns.id, columnId))
-      .then(rows => rows[0]);
+      .then((rows) => rows[0]);
 
     reply.status(201).send({
       message: "Column added successfully",
@@ -572,7 +611,10 @@ export const addColumn = async (
 };
 
 export const updateColumn = async (
-  req: FastifyRequest<{ Params: { id: string }; Body: { name?: string; disableAdd?: boolean; order?: number } }>,
+  req: FastifyRequest<{
+    Params: { id: string };
+    Body: { name?: string; disableAdd?: boolean; order?: number };
+  }>,
   reply: FastifyReply
 ) => {
   console.log("[KanbanController] updateColumn accessed");
@@ -590,14 +632,16 @@ export const updateColumn = async (
     if (disableAdd !== undefined) updateData.disableAdd = disableAdd;
     if (order !== undefined) updateData.order = order;
 
-    await db.update(kanbanColumns)
+    await db
+      .update(kanbanColumns)
       .set(updateData)
       .where(eq(kanbanColumns.id, id));
 
-    const updatedColumn = await db.select()
+    const updatedColumn = await db
+      .select()
       .from(kanbanColumns)
       .where(eq(kanbanColumns.id, id))
-      .then(rows => rows[0]);
+      .then((rows) => rows[0]);
 
     if (!updatedColumn)
       return reply.status(404).send({
@@ -630,18 +674,18 @@ export const deleteColumn = async (
         message: "Column id is required",
       });
 
-    const existingColumn = await db.select()
+    const existingColumn = await db
+      .select()
       .from(kanbanColumns)
       .where(eq(kanbanColumns.id, id))
-      .then(rows => rows[0]);
+      .then((rows) => rows[0]);
 
     if (!existingColumn)
       return reply.status(404).send({
         message: "Column not found",
       });
 
-    await db.delete(kanbanColumns)
-      .where(eq(kanbanColumns.id, id));
+    await db.delete(kanbanColumns).where(eq(kanbanColumns.id, id));
 
     reply.status(200).send({
       message: `Column with ID ${id} deleted`,
@@ -665,12 +709,20 @@ export const addCard = async (
       categoryColor?: string;
       priority?: string;
       status?: string;
-    }
+    };
   }>,
   reply: FastifyReply
 ) => {
   console.log("[KanbanController] createCard accessed");
-  const { columnId, title, description, categoryTitle, categoryColor, priority, status } = req.body || {};
+  const {
+    columnId,
+    title,
+    description,
+    categoryTitle,
+    categoryColor,
+    priority,
+    status,
+  } = req.body || {};
 
   try {
     if (!columnId?.trim() || !title?.trim())
@@ -690,10 +742,11 @@ export const addCard = async (
       kanbanColumnId: columnId,
     });
 
-    const newCard = await db.select()
+    const newCard = await db
+      .select()
       .from(kanbanCards)
       .where(eq(kanbanCards.id, cardId))
-      .then(rows => rows[0]);
+      .then((rows) => rows[0]);
 
     reply.status(201).send({
       message: "Card created successfully",
@@ -719,13 +772,21 @@ export const updateCard = async (
       priority?: string;
       status?: string;
       likes?: number;
-    }
+    };
   }>,
   reply: FastifyReply
 ) => {
   console.log("[KanbanController] updateCard accessed");
   const { id } = req.params;
-  const { title, description, categoryTitle, categoryColor, priority, status, likes } = req.body || {};
+  const {
+    title,
+    description,
+    categoryTitle,
+    categoryColor,
+    priority,
+    status,
+    likes,
+  } = req.body || {};
 
   try {
     if (!id)
@@ -742,14 +803,13 @@ export const updateCard = async (
     if (status !== undefined) updateData.status = status;
     if (likes !== undefined) updateData.likes = likes;
 
-    await db.update(kanbanCards)
-      .set(updateData)
-      .where(eq(kanbanCards.id, id));
+    await db.update(kanbanCards).set(updateData).where(eq(kanbanCards.id, id));
 
-    const updatedCard = await db.select()
+    const updatedCard = await db
+      .select()
       .from(kanbanCards)
       .where(eq(kanbanCards.id, id))
-      .then(rows => rows[0]);
+      .then((rows) => rows[0]);
 
     if (!updatedCard)
       return reply.status(404).send({
@@ -782,18 +842,18 @@ export const deleteCard = async (
         message: "Card id is required",
       });
 
-    const existingCard = await db.select()
+    const existingCard = await db
+      .select()
       .from(kanbanCards)
       .where(eq(kanbanCards.id, id))
-      .then(rows => rows[0]);
+      .then((rows) => rows[0]);
 
     if (!existingCard)
       return reply.status(404).send({
         message: "Card not found",
       });
 
-    await db.delete(kanbanCards)
-      .where(eq(kanbanCards.id, id));
+    await db.delete(kanbanCards).where(eq(kanbanCards.id, id));
 
     reply.status(200).send({
       message: `Card with ID ${id} deleted`,
@@ -814,7 +874,7 @@ export const addComment = async (
       text?: string;
       userId?: string;
       replyForCommentId?: string;
-    }
+    };
   }>,
   reply: FastifyReply
 ) => {
@@ -836,10 +896,11 @@ export const addComment = async (
       replyForKanbanCommentId: replyForCommentId || null,
     });
 
-    const newComment = await db.select()
+    const newComment = await db
+      .select()
       .from(kanbanComments)
       .where(eq(kanbanComments.id, commentId))
-      .then(rows => rows[0]);
+      .then((rows) => rows[0]);
 
     reply.status(201).send({
       message: "Comment created successfully",
@@ -867,18 +928,18 @@ export const deleteComment = async (
         message: "Comment id is required",
       });
 
-    const existingComment = await db.select()
+    const existingComment = await db
+      .select()
       .from(kanbanComments)
       .where(eq(kanbanComments.id, id))
-      .then(rows => rows[0]);
+      .then((rows) => rows[0]);
 
     if (!existingComment)
       return reply.status(404).send({
         message: "Comment not found",
       });
 
-    await db.delete(kanbanComments)
-      .where(eq(kanbanComments.id, id));
+    await db.delete(kanbanComments).where(eq(kanbanComments.id, id));
 
     reply.status(200).send({
       message: `Comment with ID ${id} deleted`,
@@ -911,14 +972,16 @@ export const updateComment = async (
         message: "Comment text is required",
       });
 
-    await db.update(kanbanComments)
+    await db
+      .update(kanbanComments)
       .set({ text: text.trim() })
       .where(eq(kanbanComments.id, id));
 
-    const updatedComment = await db.select()
+    const updatedComment = await db
+      .select()
       .from(kanbanComments)
       .where(eq(kanbanComments.id, id))
-      .then(rows => rows[0]);
+      .then((rows) => rows[0]);
 
     if (!updatedComment)
       return reply.status(404).send({
@@ -939,11 +1002,19 @@ export const updateComment = async (
 };
 
 export const addReply = async (
-  req: FastifyRequest<{ Body: { kanbanCardId?: string; replyForKanbanCommentId?: string; text?: string; userId?: string } }>,
+  req: FastifyRequest<{
+    Body: {
+      kanbanCardId?: string;
+      replyForKanbanCommentId?: string;
+      text?: string;
+      userId?: string;
+    };
+  }>,
   reply: FastifyReply
 ) => {
   console.log("[KanbanController] addReply accessed");
-  const { kanbanCardId, replyForKanbanCommentId, text, userId } = req.body || {};
+  const { kanbanCardId, replyForKanbanCommentId, text, userId } =
+    req.body || {};
 
   try {
     if (!kanbanCardId?.trim() || !text?.trim() || !userId?.trim())
@@ -960,10 +1031,11 @@ export const addReply = async (
       replyForKanbanCommentId: replyForKanbanCommentId || null,
     });
 
-    const newReply = await db.select()
+    const newReply = await db
+      .select()
       .from(kanbanComments)
       .where(eq(kanbanComments.id, commentId))
-      .then(rows => rows[0]);
+      .then((rows) => rows[0]);
 
     reply.status(201).send({
       message: "Reply created successfully",
@@ -991,17 +1063,18 @@ export const getReplies = async (
         message: "Comment id is required",
       });
 
-    const replies = await db.select({
-      id: kanbanComments.id,
-      text: kanbanComments.text,
-      userId: kanbanComments.userId,
-      kanbanCardId: kanbanComments.kanbanCardId,
-      replyForKanbanCommentId: kanbanComments.replyForKanbanCommentId,
-      createdAt: kanbanComments.createdAt,
-      firstname: users.firstname,
-      lastname: users.lastname,
-      username: users.username,
-    })
+    const replies = await db
+      .select({
+        id: kanbanComments.id,
+        text: kanbanComments.text,
+        userId: kanbanComments.userId,
+        kanbanCardId: kanbanComments.kanbanCardId,
+        replyForKanbanCommentId: kanbanComments.replyForKanbanCommentId,
+        createdAt: kanbanComments.createdAt,
+        firstname: users.firstname,
+        lastname: users.lastname,
+        username: users.username,
+      })
       .from(kanbanComments)
       .leftJoin(users, eq(kanbanComments.userId, users.id))
       .where(eq(kanbanComments.replyForKanbanCommentId, commentId));
@@ -1032,24 +1105,27 @@ export const likeCard = async (
         message: "Card id is required",
       });
 
-    const card = await db.select()
+    const card = await db
+      .select()
       .from(kanbanCards)
       .where(eq(kanbanCards.id, id))
-      .then(rows => rows[0]);
+      .then((rows) => rows[0]);
 
     if (!card)
       return reply.status(404).send({
         message: "Card not found",
       });
 
-    await db.update(kanbanCards)
+    await db
+      .update(kanbanCards)
       .set({ likes: (card.likes || 0) + 1 })
       .where(eq(kanbanCards.id, id));
 
-    const updatedCard = await db.select()
+    const updatedCard = await db
+      .select()
       .from(kanbanCards)
       .where(eq(kanbanCards.id, id))
-      .then(rows => rows[0]);
+      .then((rows) => rows[0]);
 
     reply.status(200).send({
       message: `Card with ID ${id} liked`,
@@ -1065,7 +1141,9 @@ export const likeCard = async (
 };
 
 export const moveCard = async (
-  req: FastifyRequest<{ Body: { cardId?: string; newColumnId?: string; newIndex?: number } }>,
+  req: FastifyRequest<{
+    Body: { cardId?: string; newColumnId?: string; newIndex?: number };
+  }>,
   reply: FastifyReply
 ) => {
   console.log("[KanbanController] moveCard accessed");
@@ -1077,24 +1155,27 @@ export const moveCard = async (
         message: "cardId and newColumnId are required",
       });
 
-    const card = await db.select()
+    const card = await db
+      .select()
       .from(kanbanCards)
       .where(eq(kanbanCards.id, cardId))
-      .then(rows => rows[0]);
+      .then((rows) => rows[0]);
 
     if (!card)
       return reply.status(404).send({
         message: "Card not found",
       });
 
-    await db.update(kanbanCards)
+    await db
+      .update(kanbanCards)
       .set({ kanbanColumnId: newColumnId })
       .where(eq(kanbanCards.id, cardId));
 
-    const updatedCard = await db.select()
+    const updatedCard = await db
+      .select()
       .from(kanbanCards)
       .where(eq(kanbanCards.id, cardId))
-      .then(rows => rows[0]);
+      .then((rows) => rows[0]);
 
     reply.status(200).send({
       message: `Card moved successfully`,

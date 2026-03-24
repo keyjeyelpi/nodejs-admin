@@ -21,20 +21,26 @@ export async function seed() {
 
   if (existingPermissions.length > 0) {
     console.log("Permissions already exist, skipping...");
-    console.log("Existing permissions:", existingPermissions.map(p => p.key));
+    console.log(
+      "Existing permissions:",
+      existingPermissions.map((p) => p.key)
+    );
     return;
   }
 
   console.log("Creating default permissions...");
 
   await db.insert(permissions).values(
-    PERMISSIONS.map(key => ({
+    PERMISSIONS.map((key) => ({
       id: uuidv4(),
       key,
     }))
   );
 
   const permissionsList = await db.select().from(permissions);
-  console.log("Created permissions:", permissionsList.map(p => p.key));
+  console.log(
+    "Created permissions:",
+    permissionsList.map((p) => p.key)
+  );
   console.log("Permissions seeding complete!");
 }

@@ -43,6 +43,9 @@ export async function seed() {
   ]);
 
   const rolesList = await db.select().from(roles);
-  console.log("Created roles:", rolesList.map(r => r.title));
+  console.log(
+    "Created roles:",
+    rolesList.map((r) => r.title)
+  );
   console.log("Roles seeding complete!");
 }

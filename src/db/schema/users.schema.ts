@@ -1,4 +1,10 @@
-import { mysqlTable, varchar, text, boolean, datetime } from "drizzle-orm/mysql-core";
+import {
+  mysqlTable,
+  varchar,
+  text,
+  boolean,
+  datetime,
+} from "drizzle-orm/mysql-core";
 import { sql } from "drizzle-orm";
 
 export const users = mysqlTable("users", {
@@ -13,6 +19,10 @@ export const users = mysqlTable("users", {
   contactnumber: varchar("contactnumber", { length: 191 }).notNull(),
   photo: text("photo"),
   active: boolean("active").notNull().default(true),
-  createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
-  updatedAt: datetime("updated_at").default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`).notNull(),
+  createdAt: datetime("created_at")
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+  updatedAt: datetime("updated_at")
+    .default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`)
+    .notNull(),
 });

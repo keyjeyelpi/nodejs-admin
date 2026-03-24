@@ -10,10 +10,11 @@ export const fetchUserSettings = async (
   const { user_id } = req.params;
 
   try {
-    const settings = await db.select()
+    const settings = await db
+      .select()
       .from(userSettings)
       .where(eq(userSettings.userId, user_id))
-      .then(rows => rows[0]);
+      .then((rows) => rows[0]);
 
     if (!settings)
       return reply.status(404).send({
@@ -34,7 +35,14 @@ export const fetchUserSettings = async (
 };
 
 export const updateUserSettings = async (
-  req: FastifyRequest<{ Params: { user_id: string }; Body: { colorPrimary?: string; colorSecondary?: string; darkModePreference?: string } }>,
+  req: FastifyRequest<{
+    Params: { user_id: string };
+    Body: {
+      colorPrimary?: string;
+      colorSecondary?: string;
+      darkModePreference?: string;
+    };
+  }>,
   reply: FastifyReply
 ) => {
   const { user_id } = req.params;
@@ -43,17 +51,21 @@ export const updateUserSettings = async (
   try {
     const updateData: Record<string, unknown> = {};
     if (colorPrimary !== undefined) updateData.colorPrimary = colorPrimary;
-    if (colorSecondary !== undefined) updateData.colorSecondary = colorSecondary;
-    if (darkModePreference !== undefined) updateData.darkModePreference = darkModePreference;
+    if (colorSecondary !== undefined)
+      updateData.colorSecondary = colorSecondary;
+    if (darkModePreference !== undefined)
+      updateData.darkModePreference = darkModePreference;
 
-    await db.update(userSettings)
+    await db
+      .update(userSettings)
       .set(updateData)
       .where(eq(userSettings.userId, user_id));
 
-    const updatedSettings = await db.select()
+    const updatedSettings = await db
+      .select()
       .from(userSettings)
       .where(eq(userSettings.userId, user_id))
-      .then(rows => rows[0]);
+      .then((rows) => rows[0]);
 
     if (!updatedSettings)
       return reply.status(404).send({

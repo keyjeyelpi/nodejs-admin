@@ -25,7 +25,9 @@ export async function seed() {
   }
 
   // Get System Administrator role for Kim Joseph
-  const systemAdminRole = rolesList.find(r => r.title === "System Administrator");
+  const systemAdminRole = rolesList.find(
+    (r) => r.title === "System Administrator"
+  );
   if (!systemAdminRole) {
     console.error("System Administrator role not found.");
     process.exit(1);
@@ -52,7 +54,9 @@ export async function seed() {
   console.log("Created Kim Joseph Penaloza with System Administrator role");
 
   // Get other roles for random users (exclude System Administrator)
-  const otherRoles = rolesList.filter(r => r.title !== "System Administrator");
+  const otherRoles = rolesList.filter(
+    (r) => r.title !== "System Administrator"
+  );
 
   // Create 49 additional users
   for (let i = 0; i < 99; i++) {
@@ -63,7 +67,8 @@ export async function seed() {
     const active = i % 2 === 0;
 
     // Pick a random role (from other roles, not System Administrator)
-    const randomRole = otherRoles[Math.floor(Math.random() * otherRoles.length)]!;
+    const randomRole =
+      otherRoles[Math.floor(Math.random() * otherRoles.length)]!;
 
     const password = await bcrypt.hash("password123", 10);
 
@@ -73,19 +78,27 @@ export async function seed() {
       roleId: randomRole.id,
       lastname: lastName!,
       firstname: firstName!,
-      email: faker.internet.email({ firstName: firstName.toLowerCase(), lastName: lastName.toLowerCase() }),
-      username: faker.internet.username({ firstName: firstName.toLowerCase(), lastName: lastName.toLowerCase() }),
+      email: faker.internet.email({
+        firstName: firstName.toLowerCase(),
+        lastName: lastName.toLowerCase(),
+      }),
+      username: faker.internet.username({
+        firstName: firstName.toLowerCase(),
+        lastName: lastName.toLowerCase(),
+      }),
       password: password,
       contactnumber: faker.phone.number({ style: "international" }),
       active: active,
     });
   }
 
-  console.log("Users seeding complete! Created 50 users (1 Kim Joseph Penaloza + 49 random)");
+  console.log(
+    "Users seeding complete! Created 50 users (1 Kim Joseph Penaloza + 49 random)"
+  );
 
   // Count active vs inactive users
   const allUsers = await db.select({ active: users.active }).from(users);
-  const activeCount = allUsers.filter(u => u.active).length;
+  const activeCount = allUsers.filter((u) => u.active).length;
   const inactiveCount = allUsers.length - activeCount;
 
   console.log(`Total users: ${allUsers.length}`);

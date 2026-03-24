@@ -7,6 +7,10 @@ export const kanbanComments = mysqlTable("kanban_comments", {
   userId: varchar("userId", { length: 191 }).notNull(),
   kanbanCardId: varchar("kanbanCardId", { length: 191 }).notNull(),
   replyForKanbanCommentId: varchar("replyForKanbanCommentId", { length: 191 }),
-  createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
-  updatedAt: datetime("updated_at").default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`).notNull(),
+  createdAt: datetime("created_at")
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+  updatedAt: datetime("updated_at")
+    .default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`)
+    .notNull(),
 });

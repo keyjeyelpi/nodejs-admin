@@ -1,6 +1,11 @@
 import type { FastifyRequest, FastifyReply } from "fastify";
 import { db } from "../db/index.js";
-import { users, roles, rolePermissions, permissions } from "../db/schema/index.ts";
+import {
+  users,
+  roles,
+  rolePermissions,
+  permissions,
+} from "../db/schema/index.ts";
 import { desc, eq, asc, sql, or, and, like, type AnyColumn } from "drizzle-orm";
 import { toCamelCase } from "../utils/case-converter.util.ts";
 import type { QueryParams } from "../interfaces/general.interface.ts";
@@ -26,24 +31,25 @@ export const fetchAllUsers = async (
     const page = parseInt(req.query.page || "1");
     const limit = parseInt(req.query.limit || "12");
     const search = (req.query.search as string) || "";
-    const active = req.query.status !== undefined ? parseInt(req.query.status as string) : 0;
+    const active =
+      req.query.status !== undefined ? parseInt(req.query.status as string) : 0;
     const sortOrder = (req.query.sortOrder as string) || "asc";
-    const sortByColumn = sortableColumns[req.query.sortBy as string] || users.lastname;
+    const sortByColumn =
+      sortableColumns[req.query.sortBy as string] || users.lastname;
     const skip = (page - 1) * limit;
 
     // Build search condition
     const searchCondition = search
       ? or(
-        eq(users.id, search),
-        like(users.lastname, `%${search}%`),
-        like(users.firstname, `%${search}%`),
-        like(users.email, `%${search}%`),
-        like(users.username, `%${search}%`),
-        like(users.country, `%${search}%`),
-        like(users.contactnumber, `%${search}%`)
-      )
+          eq(users.id, search),
+          like(users.lastname, `%${search}%`),
+          like(users.firstname, `%${search}%`),
+          like(users.email, `%${search}%`),
+          like(users.username, `%${search}%`),
+          like(users.country, `%${search}%`),
+          like(users.contactnumber, `%${search}%`)
+        )
       : undefined;
-
 
     // Build active filter condition
     // active === 0: return all users
@@ -156,7 +162,7 @@ export const fetchUserByAccountID = async (
       .leftJoin(permissions, eq(rolePermissions.permissionId, permissions.id))
       .where(eq(users.id, id))
       .groupBy(users.id, roles.id)
-      .then(rows => rows[0]);
+      .then((rows) => rows[0]);
 
     if (!user) {
       return reply.status(404).send({
@@ -187,7 +193,6 @@ export const fetchUserByAccountID = async (
       message: `Get user with ID ${id}`,
       data: toCamelCase(cleanedUser),
     });
-
   } catch (err) {
     console.error(err);
     return reply.status(500).send({
@@ -202,53 +207,73 @@ export const createUser = async (
   reply: FastifyReply
 ) => {
   console.log("createUser accessed");
-  const { email, username, password, country, roleId, lastname, firstname, contactnumber, active } = req.body || {};
+  const {
+    email,
+    username,
+    password,
+    country,
+    roleId,
+    lastname,
+    firstname,
+    contactnumber,
+    active,
+  } = req.body || {};
 
   try {
-    if (!email || !username || !password || !country || !roleId || !lastname || !firstname || !contactnumber)
+    if (
+      !email ||
+      !username ||
+      !password ||
+      !country ||
+      !roleId ||
+      !lastname ||
+      !firstname ||
+      !contactnumber
+    )
       return reply.status(400).send({
         message: "All fields are required",
       });
 
-    const existingUser = await db.select()
+    const existingUser = await db
+      .select()
       .from(users)
       .where(eq(users.email, email))
-      .then(rows => rows[0]);
+      .then((rows) => rows[0]);
 
     if (existingUser)
       return reply.status(400).send({
         message: "User already exists",
       });
 
-    await db.insert(users)
-      .values({
-        id: crypto.randomUUID(),
-        email,
-        username,
-        password,
-        country,
-        roleId,
-        lastname,
-        firstname,
-        contactnumber,
-        active: active ?? true,
-      });
+    await db.insert(users).values({
+      id: crypto.randomUUID(),
+      email,
+      username,
+      password,
+      country,
+      roleId,
+      lastname,
+      firstname,
+      contactnumber,
+      active: active ?? true,
+    });
 
     // Fetch the created user
-    const [newUser] = await db.select({
-      id: users.id,
-      userId: users.id,
-      country: users.country,
-      roleId: users.roleId,
-      lastname: users.lastname,
-      firstname: users.firstname,
-      email: users.email,
-      username: users.username,
-      contactnumber: users.contactnumber,
-      active: users.active,
-      createdAt: users.createdAt,
-      updatedAt: users.updatedAt,
-    })
+    const [newUser] = await db
+      .select({
+        id: users.id,
+        userId: users.id,
+        country: users.country,
+        roleId: users.roleId,
+        lastname: users.lastname,
+        firstname: users.firstname,
+        email: users.email,
+        username: users.username,
+        contactnumber: users.contactnumber,
+        active: users.active,
+        createdAt: users.createdAt,
+        updatedAt: users.updatedAt,
+      })
       .from(users)
       .where(eq(users.email, email));
 
@@ -271,7 +296,16 @@ export const updateUser = async (
 ) => {
   console.log("updateUser accessed");
   const { id } = req.params;
-  const { country, roleId, lastname, firstname, email, username, contactnumber, active } = req.body || {};
+  const {
+    country,
+    roleId,
+    lastname,
+    firstname,
+    email,
+    username,
+    contactnumber,
+    active,
+  } = req.body || {};
 
   if (!id)
     return reply.status(400).send({
@@ -280,7 +314,8 @@ export const updateUser = async (
 
   try {
     // Check if user exists
-    const [existingUser] = await db.select()
+    const [existingUser] = await db
+      .select()
       .from(users)
       .where(eq(users.id, id));
 
@@ -289,7 +324,8 @@ export const updateUser = async (
         message: "User not found",
       });
 
-    await db.update(users)
+    await db
+      .update(users)
       .set({
         country,
         roleId,
@@ -303,20 +339,21 @@ export const updateUser = async (
       })
       .where(eq(users.id, id));
 
-    const [updatedUser] = await db.select({
-      id: users.id,
-      userId: users.id,
-      country: users.country,
-      roleId: users.roleId,
-      lastname: users.lastname,
-      firstname: users.firstname,
-      email: users.email,
-      username: users.username,
-      contactnumber: users.contactnumber,
-      active: users.active,
-      createdAt: users.createdAt,
-      updatedAt: users.updatedAt,
-    })
+    const [updatedUser] = await db
+      .select({
+        id: users.id,
+        userId: users.id,
+        country: users.country,
+        roleId: users.roleId,
+        lastname: users.lastname,
+        firstname: users.firstname,
+        email: users.email,
+        username: users.username,
+        contactnumber: users.contactnumber,
+        active: users.active,
+        createdAt: users.createdAt,
+        updatedAt: users.updatedAt,
+      })
       .from(users)
       .where(eq(users.id, id));
 
@@ -348,7 +385,12 @@ export const deleteUser = async (
 
   try {
     // Get current user to toggle their active status
-    const [user] = await db.select({ firstname: users.firstname, lastname: users.lastname, active: users.active })
+    const [user] = await db
+      .select({
+        firstname: users.firstname,
+        lastname: users.lastname,
+        active: users.active,
+      })
       .from(users)
       .where(eq(users.id, id));
 
@@ -361,13 +403,14 @@ export const deleteUser = async (
     // Toggle the active status
     const newActiveStatus = !user.active;
 
-    await db.update(users)
+    await db
+      .update(users)
       .set({ active: newActiveStatus })
       .where(eq(users.id, id));
 
     reply.status(200).send({
       data: user.active,
-      message: `${user.firstname + ' ' + user.lastname} has been ${newActiveStatus ? 'activated' : 'deactivated'}.`,
+      message: `${user.firstname + " " + user.lastname} has been ${newActiveStatus ? "activated" : "deactivated"}.`,
     });
   } catch (err: unknown) {
     console.error(err);

@@ -11,73 +11,79 @@ import { permissions } from "./permissions.schema.ts";
 import { rolePermissions } from "./role-permissions.schema.ts";
 
 export const usersRelations = relations(users, ({ one, many }) => ({
-    settings: one(userSettings, {
-        fields: [users.id],
-        references: [userSettings.userId],
-    }),
-    comments: many(kanbanComments),
+  settings: one(userSettings, {
+    fields: [users.id],
+    references: [userSettings.userId],
+  }),
+  comments: many(kanbanComments),
 }));
 
 export const userSettingsRelations = relations(userSettings, ({ one }) => ({
-    user: one(users, {
-        fields: [userSettings.userId],
-        references: [users.id],
-    }),
+  user: one(users, {
+    fields: [userSettings.userId],
+    references: [users.id],
+  }),
 }));
 
 export const userTokensRelations = relations(userTokens, ({ one }) => ({
-    user: one(users, {
-        fields: [userTokens.userID],
-        references: [users.id],
-    }),
+  user: one(users, {
+    fields: [userTokens.userID],
+    references: [users.id],
+  }),
 }));
 
 export const kanbanBoardsRelations = relations(kanbanBoards, ({ many }) => ({
-    columns: many(kanbanColumns),
+  columns: many(kanbanColumns),
 }));
 
-export const kanbanColumnsRelations = relations(kanbanColumns, ({ one, many }) => ({
+export const kanbanColumnsRelations = relations(
+  kanbanColumns,
+  ({ one, many }) => ({
     board: one(kanbanBoards, {
-        fields: [kanbanColumns.boardId],
-        references: [kanbanBoards.id],
+      fields: [kanbanColumns.boardId],
+      references: [kanbanBoards.id],
     }),
     cards: many(kanbanCards),
-}));
+  })
+);
 
 export const kanbanCardsRelations = relations(kanbanCards, ({ one, many }) => ({
-    column: one(kanbanColumns, {
-        fields: [kanbanCards.kanbanColumnId],
-        references: [kanbanColumns.id],
-    }),
-    comments: many(kanbanComments),
+  column: one(kanbanColumns, {
+    fields: [kanbanCards.kanbanColumnId],
+    references: [kanbanColumns.id],
+  }),
+  comments: many(kanbanComments),
 }));
 
 export const kanbanCommentsRelations = relations(kanbanComments, ({ one }) => ({
-    user: one(users, {
-        fields: [kanbanComments.userId],
-        references: [users.id],
-    }),
-    card: one(kanbanCards, {
-        fields: [kanbanComments.kanbanCardId],
-        references: [kanbanCards.id],
-    }),
+  user: one(users, {
+    fields: [kanbanComments.userId],
+    references: [users.id],
+  }),
+  card: one(kanbanCards, {
+    fields: [kanbanComments.kanbanCardId],
+    references: [kanbanCards.id],
+  }),
 }));
 
 export const rolesRelations = relations(roles, ({ many }) => ({
-    rolePermissions: many(rolePermissions),
+  rolePermissions: many(rolePermissions),
 }));
 
 export const permissionsRelations = relations(permissions, ({ many }) => ({
-    rolePermissions: many(rolePermissions),
+  rolePermissions: many(rolePermissions),
 }));
 
-export const rolePermissionsRelations = relations(rolePermissions, ({ one }) => ({
+export const rolePermissionsRelations = relations(
+  rolePermissions,
+  ({ one }) => ({
     role: one(roles, {
-        fields: [rolePermissions.roleId],
-        references: [roles.id],
+      fields: [rolePermissions.roleId],
+      references: [roles.id],
     }),
     permission: one(permissions, {
-        fields: [rolePermissions.permissionId],
-        references: [permissions.id],
+      fields: [rolePermissions.permissionId],
+      references: [permissions.id],
     }),
-}));
+  })
+);
