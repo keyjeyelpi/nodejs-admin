@@ -2,6 +2,11 @@ import type { FastifyRequest, FastifyReply } from "fastify";
 import { db } from "../db/index.js";
 import { userSettings } from "../db/schema/index.ts";
 import { eq } from "drizzle-orm";
+import { logUserAction } from "../utils/logger.util.ts";
+
+const getCurrentUserId = (req: FastifyRequest): string => {
+  return (req as any).user?.sub || "unknown";
+};
 
 export const fetchUserSettings = async (
   req: FastifyRequest<{ Params: { user_id: string } }>,
@@ -20,6 +25,13 @@ export const fetchUserSettings = async (
       return reply.status(404).send({
         message: "Settings not found",
       });
+
+    // Log settings fetch
+    await logUserAction({
+      userId: getCurrentUserId(req),
+      functionName: "fetchUserSettings",
+      req,
+    });
 
     reply.status(200).send({
       message: "",
@@ -71,6 +83,13 @@ export const updateUserSettings = async (
       return reply.status(404).send({
         message: "Settings not found",
       });
+
+    // Log settings update
+    await logUserAction({
+      userId: getCurrentUserId(req),
+      functionName: "updateUserSettings",
+      req,
+    });
 
     reply.status(200).send({
       message: "Settings updated successfully",

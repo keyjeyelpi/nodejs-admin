@@ -7,6 +7,8 @@ dotenv.config();
 
 export const signature = async (req: FastifyRequest, reply: FastifyReply) => {
   console.log("signature middleware accessed");
+  if (req.method === "GET") return;
+
   if (!req.body)
     return reply.status(400).send({
       message: "Request body is missing",

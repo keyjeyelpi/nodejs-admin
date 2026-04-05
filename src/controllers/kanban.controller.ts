@@ -9,6 +9,11 @@ import {
   users,
 } from "../db/schema/index.ts";
 import { eq, asc, desc, sql, and } from "drizzle-orm";
+import { logUserAction } from "../utils/logger.util.ts";
+
+const getCurrentUserId = (req: FastifyRequest): string => {
+  return (req as any).user?.sub || "unknown";
+};
 
 // Define valid values as constants to avoid enum issues
 const VALID_PRIORITIES = ["URGENT", "HIGH", "MEDIUM", "LOW"] as const;
@@ -466,6 +471,13 @@ export const createBoard = async (
       message: "Board created successfully",
       data: newBoard,
     });
+
+    // Log board creation
+    await logUserAction({
+      userId: getCurrentUserId(req),
+      functionName: "createBoard",
+      req,
+    });
   } catch (err) {
     console.error("[KanbanController] Error in createBoard:", err);
     reply.status(500).send({
@@ -514,6 +526,13 @@ export const updateBoard = async (
       message: `Board with ID ${id} updated`,
       data: updatedBoard,
     });
+
+    // Log board update
+    await logUserAction({
+      userId: getCurrentUserId(req),
+      functionName: "updateBoard",
+      req,
+    });
   } catch (err: unknown) {
     console.error("[KanbanController] Error in updateBoard:", err);
 
@@ -549,6 +568,13 @@ export const deleteBoard = async (
       });
 
     await db.delete(kanbanBoards).where(eq(kanbanBoards.id, id));
+
+    // Log board deletion
+    await logUserAction({
+      userId: getCurrentUserId(req),
+      functionName: "deleteBoard",
+      req,
+    });
 
     reply.status(200).send({
       message: `Board with ID ${id} deleted`,
@@ -601,6 +627,13 @@ export const addColumn = async (
       message: "Column added successfully",
       data: newColumn,
     });
+
+    // Log column creation
+    await logUserAction({
+      userId: getCurrentUserId(req),
+      functionName: "addColumn",
+      req,
+    });
   } catch (err) {
     console.error("[KanbanController] Error in addColumn:", err);
     reply.status(500).send({
@@ -652,6 +685,13 @@ export const updateColumn = async (
       message: `Column with ID ${id} updated`,
       data: updatedColumn,
     });
+
+    // Log column update
+    await logUserAction({
+      userId: getCurrentUserId(req),
+      functionName: "updateColumn",
+      req,
+    });
   } catch (err) {
     console.error("[KanbanController] Error in updateColumn:", err);
     reply.status(500).send({
@@ -686,6 +726,13 @@ export const deleteColumn = async (
       });
 
     await db.delete(kanbanColumns).where(eq(kanbanColumns.id, id));
+
+    // Log column deletion
+    await logUserAction({
+      userId: getCurrentUserId(req),
+      functionName: "deleteColumn",
+      req,
+    });
 
     reply.status(200).send({
       message: `Column with ID ${id} deleted`,
@@ -751,6 +798,13 @@ export const addCard = async (
     reply.status(201).send({
       message: "Card created successfully",
       data: newCard,
+    });
+
+    // Log card creation
+    await logUserAction({
+      userId: getCurrentUserId(req),
+      functionName: "addCard",
+      req,
     });
   } catch (err) {
     console.error("[KanbanController] Error in createCard:", err);
@@ -820,6 +874,13 @@ export const updateCard = async (
       message: `Card with ID ${id} updated`,
       data: updatedCard,
     });
+
+    // Log card update
+    await logUserAction({
+      userId: getCurrentUserId(req),
+      functionName: "updateCard",
+      req,
+    });
   } catch (err) {
     console.error("[KanbanController] Error in updateCard:", err);
     reply.status(500).send({
@@ -854,6 +915,13 @@ export const deleteCard = async (
       });
 
     await db.delete(kanbanCards).where(eq(kanbanCards.id, id));
+
+    // Log card deletion
+    await logUserAction({
+      userId: getCurrentUserId(req),
+      functionName: "deleteCard",
+      req,
+    });
 
     reply.status(200).send({
       message: `Card with ID ${id} deleted`,
@@ -906,6 +974,13 @@ export const addComment = async (
       message: "Comment created successfully",
       data: newComment,
     });
+
+    // Log comment creation
+    await logUserAction({
+      userId: getCurrentUserId(req),
+      functionName: "addComment",
+      req,
+    });
   } catch (err) {
     console.error("[KanbanController] Error in createComment:", err);
     reply.status(500).send({
@@ -943,6 +1018,13 @@ export const deleteComment = async (
 
     reply.status(200).send({
       message: `Comment with ID ${id} deleted`,
+    });
+
+    // Log comment deletion
+    await logUserAction({
+      userId: getCurrentUserId(req),
+      functionName: "deleteComment",
+      req,
     });
   } catch (err) {
     console.error("[KanbanController] Error in deleteComment:", err);
@@ -991,6 +1073,13 @@ export const updateComment = async (
     reply.status(200).send({
       message: `Comment with ID ${id} updated`,
       data: updatedComment,
+    });
+
+    // Log comment update
+    await logUserAction({
+      userId: getCurrentUserId(req),
+      functionName: "updateComment",
+      req,
     });
   } catch (err) {
     console.error("[KanbanController] Error in updateComment:", err);

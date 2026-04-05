@@ -10,6 +10,7 @@ import { desc, eq, asc, sql, or, and, like, type AnyColumn } from "drizzle-orm";
 import { toCamelCase } from "../utils/case-converter.util.ts";
 import type { QueryParams } from "../interfaces/general.interface.ts";
 import type { UserBody } from "../interfaces/user.interface.ts";
+import { logUserAction } from "../utils/logger.util.ts";
 
 // Mapping for sortable columns
 const sortableColumns: Record<string, AnyColumn> = {
@@ -41,14 +42,14 @@ export const fetchAllUsers = async (
     // Build search condition
     const searchCondition = search
       ? or(
-          eq(users.id, search),
-          like(users.lastname, `%${search}%`),
-          like(users.firstname, `%${search}%`),
-          like(users.email, `%${search}%`),
-          like(users.username, `%${search}%`),
-          like(users.country, `%${search}%`),
-          like(users.contactnumber, `%${search}%`)
-        )
+        eq(users.id, search),
+        like(users.lastname, `%${search}%`),
+        like(users.firstname, `%${search}%`),
+        like(users.email, `%${search}%`),
+        like(users.username, `%${search}%`),
+        like(users.country, `%${search}%`),
+        like(users.contactnumber, `%${search}%`)
+      )
       : undefined;
 
     // Build active filter condition
@@ -101,6 +102,13 @@ export const fetchAllUsers = async (
 
     const totalCount = totalCountResult[0]?.count || 0;
 
+    // Log users fetch
+    await logUserAction({
+      userId: getCurrentUserId(req),
+      functionName: "fetchAllUsers",
+      req,
+    });
+
     // 📦 Response
     return reply.status(200).send({
       data: toCamelCase(allUsers),
@@ -116,6 +124,10 @@ export const fetchAllUsers = async (
       error: err,
     });
   }
+};
+
+const getCurrentUserId = (req: FastifyRequest): string => {
+  return (req as any).user?.sub || "unknown";
 };
 
 export const fetchUserByAccountID = async (
@@ -189,6 +201,13 @@ export const fetchUserByAccountID = async (
       permissions: [...new Set(perms.filter(Boolean))],
     };
 
+    // Log user fetch
+    await logUserAction({
+      userId: getCurrentUserId(req),
+      functionName: "fetchUserByAccountID",
+      req,
+    });
+
     return reply.status(200).send({
       message: `Get user with ID ${id}`,
       data: toCamelCase(cleanedUser),
@@ -212,7 +231,9 @@ export const createUser = async (
     username,
     password,
     country,
-    roleId,
+    role: {
+      id: roleId,
+    },
     lastname,
     firstname,
     contactnumber,
@@ -277,6 +298,15 @@ export const createUser = async (
       .from(users)
       .where(eq(users.email, email));
 
+    // Log user creation
+    if (newUser) {
+      await logUserAction({
+        userId: newUser.id,
+        functionName: "createUser",
+        req,
+      });
+    }
+
     reply.status(201).send({
       message: "User registered successfully",
       data: toCamelCase(newUser),
@@ -298,7 +328,9 @@ export const updateUser = async (
   const { id } = req.params;
   const {
     country,
-    roleId,
+    role: {
+      id: roleId,
+    },
     lastname,
     firstname,
     email,
@@ -357,6 +389,13 @@ export const updateUser = async (
       .from(users)
       .where(eq(users.id, id));
 
+    // Log user update
+    await logUserAction({
+      userId: getCurrentUserId(req),
+      functionName: "updateUser",
+      req,
+    });
+
     reply.status(200).send({
       message: `User with ID ${id} updated`,
       data: toCamelCase(updatedUser),
@@ -407,6 +446,13 @@ export const deleteUser = async (
       .update(users)
       .set({ active: newActiveStatus })
       .where(eq(users.id, id));
+
+    // Log user delete (toggle active status)
+    await logUserAction({
+      userId: getCurrentUserId(req),
+      functionName: "deleteUser",
+      req,
+    });
 
     reply.status(200).send({
       data: user.active,

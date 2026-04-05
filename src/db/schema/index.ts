@@ -9,6 +9,7 @@ export { kanbanComments } from "./kanban-comments.schema.ts";
 export { roles } from "./roles.schema.ts";
 export { permissions } from "./permissions.schema.ts";
 export { rolePermissions } from "./role-permissions.schema.ts";
+export { logs } from "./logs.schema.ts";
 
 // Relations
 export { usersRelations } from "./relations.schema.ts";

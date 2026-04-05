@@ -4,6 +4,7 @@ import {
   refreshToken,
   logout,
   cleanupExpiredTokens,
+  validateSession,
 } from "../controllers/auth.controller.ts";
 import { signature } from "../middleware/signature.middleware.ts";
 
@@ -12,6 +13,12 @@ export default async function authRoutes(fastify: FastifyInstance) {
     "/login",
     { preHandler: [signature] },
     login
+  );
+
+  fastify.get(
+    "/validate-session",
+    { preHandler: [signature] },
+    validateSession
   );
 
   fastify.post<{ Body: { refreshToken?: string } }>(
@@ -26,6 +33,5 @@ export default async function authRoutes(fastify: FastifyInstance) {
     logout
   );
 
-  // Manual cleanup endpoint (optional - for admin use)
   fastify.get("/cleanup", { preHandler: [signature] }, cleanupExpiredTokens);
 }
