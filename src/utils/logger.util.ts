@@ -1,6 +1,7 @@
+import { v4 as uuidv4 } from "uuid";
+import { tryToCatch } from "try-to-catch";
 import { db } from "../db/index.ts";
 import { logs } from "../db/schema/index.ts";
-import { v4 as uuidv4 } from "uuid";
 
 export interface LogParams {
   userId: string;
@@ -16,8 +17,10 @@ export const getModuleFromUrl = (url: string): string => {
   // Remove query string if present
   const pathParts = url.split("?");
   const path = pathParts[0] || "";
+
   // Split by "/" and filter empty segments
   const segments = path.split("/").filter(Boolean);
+
   // Return the first segment (parent route path)
   return segments[0] || "unknown";
 };
@@ -44,25 +47,22 @@ export const getActionFromFunctionName = (functionName: string): string => {
   ];
 
   for (const action of actionPatterns) {
-    if (functionName.toLowerCase().startsWith(action)) {
-      return action;
-    }
+    if (functionName.toLowerCase().startsWith(action)) return action;
   }
+
   return functionName.toLowerCase();
 };
 
 export const createLog = async ({ userId, action, module }: LogParams) => {
-  try {
-    await db.insert(logs).values({
-      id: uuidv4(),
-      userId,
-      action,
-      module: module || "unknown",
-      timestamp: new Date(),
-    });
-  } catch (error) {
-    console.error("Failed to create log:", error);
-  }
+  const [error] = await tryToCatch(db.insert(logs).values, {
+    id: uuidv4(),
+    userId,
+    action,
+    module: module || "unknown",
+    timestamp: new Date(),
+  });
+
+  if (error) console.error("Failed to create log:", error);
 };
 
 /**
@@ -78,7 +78,9 @@ export const logUserAction = async ({
 }: {
   userId: string;
   functionName: string;
-  req?: { url?: string };
+  req?: {
+    url?: string;
+  };
 }) => {
   const action = getActionFromFunctionName(functionName);
   const module = req?.url ? getModuleFromUrl(req.url) : "unknown";

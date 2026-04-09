@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import { signature } from "../middleware/signature.middleware.ts";
 import {
   login,
   refreshToken,
@@ -6,14 +7,14 @@ import {
   cleanupExpiredTokens,
   validateSession,
 } from "../controllers/auth.controller.ts";
-import { signature } from "../middleware/signature.middleware.ts";
 
 export default async function authRoutes(fastify: FastifyInstance) {
-  fastify.post<{ Body: { username?: string; password?: string } }>(
-    "/login",
-    { preHandler: [signature] },
-    login
-  );
+  fastify.post<{
+    Body: {
+      username?: string;
+      password?: string;
+    };
+  }>("/login", { preHandler: [signature] }, login);
 
   fastify.get(
     "/validate-session",
@@ -21,17 +22,17 @@ export default async function authRoutes(fastify: FastifyInstance) {
     validateSession
   );
 
-  fastify.post<{ Body: { refreshToken?: string } }>(
-    "/refresh",
-    { preHandler: [signature] },
-    refreshToken
-  );
+  fastify.post<{
+    Body: {
+      refreshToken?: string;
+    };
+  }>("/refresh", { preHandler: [signature] }, refreshToken);
 
-  fastify.post<{ Body: { refreshToken?: string } }>(
-    "/logout",
-    { preHandler: [signature] },
-    logout
-  );
+  fastify.post<{
+    Body: {
+      refreshToken?: string;
+    };
+  }>("/logout", { preHandler: [signature] }, logout);
 
   fastify.get("/cleanup", { preHandler: [signature] }, cleanupExpiredTokens);
 }

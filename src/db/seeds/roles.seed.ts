@@ -1,16 +1,13 @@
+import { v4 as uuidv4 } from "uuid";
 import { db } from "../index.ts";
 import { roles } from "../schema/index.ts";
-import { v4 as uuidv4 } from "uuid";
 
 export async function seed() {
   console.log("Seeding roles...");
-
   // Check if roles already exist
   const existingRoles = await db.select().from(roles);
 
-  if (existingRoles.length > 0) {
-    await db.delete(roles).execute();
-  }
+  if (existingRoles.length > 0) await db.delete(roles).execute();
 
   console.log("Creating default roles...");
 
@@ -43,6 +40,7 @@ export async function seed() {
   ]);
 
   const rolesList = await db.select().from(roles);
+
   console.log(
     "Created roles:",
     rolesList.map((r) => r.title)

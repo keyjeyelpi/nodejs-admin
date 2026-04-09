@@ -1,7 +1,5 @@
-import process from "node:process";
 import bcrypt from "bcryptjs";
 import CryptoJS from "crypto-js";
-import dotenv from "dotenv";
 
 export const encrypt = (data: string) =>
   CryptoJS.AES.encrypt(data, process.env.DB_SECRET || "secret").toString();

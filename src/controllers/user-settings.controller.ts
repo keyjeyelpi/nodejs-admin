@@ -1,15 +1,21 @@
 import type { FastifyRequest, FastifyReply } from "fastify";
+import { eq } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { userSettings } from "../db/schema/index.ts";
-import { eq } from "drizzle-orm";
 import { logUserAction } from "../utils/logger.util.ts";
+
+const isUndefined = (a): a is undefined => typeof a === "undefined";
 
 const getCurrentUserId = (req: FastifyRequest): string => {
   return (req as any).user?.sub || "unknown";
 };
 
 export const fetchUserSettings = async (
-  req: FastifyRequest<{ Params: { user_id: string } }>,
+  req: FastifyRequest<{
+    Params: {
+      user_id: string;
+    };
+  }>,
   reply: FastifyReply
 ) => {
   const { user_id } = req.params;
@@ -48,7 +54,9 @@ export const fetchUserSettings = async (
 
 export const updateUserSettings = async (
   req: FastifyRequest<{
-    Params: { user_id: string };
+    Params: {
+      user_id: string;
+    };
     Body: {
       colorPrimary?: string;
       colorSecondary?: string;
@@ -62,10 +70,13 @@ export const updateUserSettings = async (
 
   try {
     const updateData: Record<string, unknown> = {};
-    if (colorPrimary !== undefined) updateData.colorPrimary = colorPrimary;
-    if (colorSecondary !== undefined)
+
+    if (!isUndefined(colorPrimary)) updateData.colorPrimary = colorPrimary;
+
+    if (!isUndefined(colorSecondary))
       updateData.colorSecondary = colorSecondary;
-    if (darkModePreference !== undefined)
+
+    if (!isUndefined(darkModePreference))
       updateData.darkModePreference = darkModePreference;
 
     await db

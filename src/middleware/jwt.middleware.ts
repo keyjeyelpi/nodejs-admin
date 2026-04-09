@@ -1,7 +1,5 @@
-import process from "node:process";
 import type { FastifyRequest, FastifyReply } from "fastify";
 import jwt from "jsonwebtoken";
-import dotenv from "dotenv";
 
 interface JwtPayload {
   sub: string;
@@ -9,10 +7,7 @@ interface JwtPayload {
   role: string;
 }
 
-export const authenticateJWT = async (
-  req: FastifyRequest,
-  reply: FastifyReply
-) => {
+export const authenticateJWT = (req: FastifyRequest, reply: FastifyReply) => {
   console.log("[JWTMiddleware] authenticateJWT accessed for path:", req.url);
   const authHeader = req.headers.authorization;
 
@@ -32,12 +27,16 @@ export const authenticateJWT = async (
 
     if (!jwtSecret) {
       console.error("JWT_SECRET is not defined in environment variables");
-      return reply.status(500).send({ error: "Server misconfiguration" });
+      return reply.status(500).send({
+        error: "Server misconfiguration",
+      });
     }
 
     if (!token) {
       console.warn("Token is missing in the Authorization header");
-      return reply.status(401).send({ error: "Token missing" });
+      return reply.status(401).send({
+        error: "Token missing",
+      });
     }
 
     (req as any).user = jwt.verify(

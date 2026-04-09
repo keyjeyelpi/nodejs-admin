@@ -23,11 +23,11 @@ export default async function usersRoutes(fastify: FastifyInstance) {
     fetchAllUsers
   );
 
-  fastify.get<{ Params: { id: string } }>(
-    "/:id",
-    { preHandler: [authenticateJWT] },
-    fetchUserByAccountID
-  );
+  fastify.get<{
+    Params: {
+      id: string;
+    };
+  }>("/:id", { preHandler: [authenticateJWT] }, fetchUserByAccountID);
 
   fastify.post<{ Body: any }>(
     "/",
@@ -35,15 +35,16 @@ export default async function usersRoutes(fastify: FastifyInstance) {
     createUser
   );
 
-  fastify.put<{ Params: { id: string }; Body: any }>(
-    "/:id",
-    { preHandler: [authenticateJWT, signature] },
-    updateUser
-  );
+  fastify.put<{
+    Params: {
+      id: string;
+    };
+    Body: any;
+  }>("/:id", { preHandler: [authenticateJWT, signature] }, updateUser);
 
-  fastify.delete<{ Params: { id: string } }>(
-    "/:id",
-    { preHandler: [authenticateJWT] },
-    deleteUser
-  );
+  fastify.delete<{
+    Params: {
+      id: string;
+    };
+  }>("/:id", { preHandler: [authenticateJWT] }, deleteUser);
 }

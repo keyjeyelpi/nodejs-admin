@@ -12,13 +12,15 @@ export { rolePermissions } from "./role-permissions.schema.ts";
 export { logs } from "./logs.schema.ts";
 
 // Relations
-export { usersRelations } from "./relations.schema.ts";
-export { userSettingsRelations } from "./relations.schema.ts";
-export { userTokensRelations } from "./relations.schema.ts";
-export { kanbanBoardsRelations } from "./relations.schema.ts";
-export { kanbanColumnsRelations } from "./relations.schema.ts";
-export { kanbanCardsRelations } from "./relations.schema.ts";
-export { kanbanCommentsRelations } from "./relations.schema.ts";
-export { rolesRelations } from "./relations.schema.ts";
-export { permissionsRelations } from "./relations.schema.ts";
-export { rolePermissionsRelations } from "./relations.schema.ts";
+export {
+  usersRelations,
+  userSettingsRelations,
+  userTokensRelations,
+  kanbanBoardsRelations,
+  kanbanColumnsRelations,
+  kanbanCardsRelations,
+  kanbanCommentsRelations,
+  rolesRelations,
+  permissionsRelations,
+  rolePermissionsRelations,
+} from "./relations.schema.ts";

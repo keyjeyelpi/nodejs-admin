@@ -1,14 +1,12 @@
 import { db } from "../index.ts";
 import { users, userSettings } from "../schema/index.ts";
-import { v4 as uuidv4 } from "uuid";
 
 export async function seed() {
   console.log("Seeding user settings...");
-
   // Check if users exist
   const existingUsers = await db.select().from(users);
 
-  if (existingUsers.length === 0) {
+  if (!existingUsers.length) {
     console.error("No users found. Please run users.seed.ts first.");
     process.exit(1);
   }
@@ -23,8 +21,8 @@ export async function seed() {
   }
 
   console.log("Creating user settings for", existingUsers.length, "users...");
-
   // Create settings for each user
+
   for (const user of existingUsers) {
     await db.insert(userSettings).values({
       userId: user.id,

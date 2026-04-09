@@ -1,16 +1,15 @@
-import { db } from "../index.ts";
-import { users, roles } from "../schema/index.ts";
 import bcrypt from "bcryptjs";
 import { v4 as uuidv4 } from "uuid";
 import { faker } from "@faker-js/faker";
+import { db } from "../index.ts";
+import { users, roles } from "../schema/index.ts";
 
 export async function seed() {
   console.log("Seeding users...");
-
   // Check if roles exist
   const rolesList = await db.select().from(roles);
 
-  if (rolesList.length === 0) {
+  if (!rolesList.length) {
     console.error("No roles found. Please run roles.seed.ts first.");
     process.exit(1);
   }
@@ -28,12 +27,13 @@ export async function seed() {
   const systemAdminRole = rolesList.find(
     (r) => r.title === "System Administrator"
   );
+
   if (!systemAdminRole) {
     console.error("System Administrator role not found.");
     process.exit(1);
   }
-  console.log("Using System Administrator role for Kim Joseph");
 
+  console.log("Using System Administrator role for Kim Joseph");
   // Create Kim Joseph Penaloza as the first user with System Administrator role
   const kimId = uuidv4();
   const hashedPassword = await bcrypt.hash("keyjeyelpi", 10);
@@ -52,8 +52,8 @@ export async function seed() {
   });
 
   console.log("Created Kim Joseph Penaloza with System Administrator role");
-
   // Get other roles for random users (exclude System Administrator)
+
   const otherRoles = rolesList.filter(
     (r) => r.title !== "System Administrator"
   );
@@ -74,7 +74,7 @@ export async function seed() {
 
     await db.insert(users).values({
       id: userId,
-      country: country,
+      country,
       roleId: randomRole.id,
       lastname: lastName!,
       firstname: firstName!,
@@ -86,9 +86,11 @@ export async function seed() {
         firstName: firstName.toLowerCase(),
         lastName: lastName.toLowerCase(),
       }),
-      password: password,
-      contactnumber: faker.phone.number({ style: "international" }),
-      active: active,
+      password,
+      contactnumber: faker.phone.number({
+        style: "international",
+      }),
+      active,
     });
   }
 
@@ -97,7 +99,12 @@ export async function seed() {
   );
 
   // Count active vs inactive users
-  const allUsers = await db.select({ active: users.active }).from(users);
+  const allUsers = await db
+    .select({
+      active: users.active,
+    })
+    .from(users);
+
   const activeCount = allUsers.filter((u) => u.active).length;
   const inactiveCount = allUsers.length - activeCount;
 

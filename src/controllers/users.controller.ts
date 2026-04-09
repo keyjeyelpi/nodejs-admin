@@ -1,16 +1,20 @@
 import type { FastifyRequest, FastifyReply } from "fastify";
+import { desc, eq, asc, sql, or, and, like, AnyColumn } from "drizzle-orm";
 import { db } from "../db/index.ts";
+import { toCamelCase } from "../utils/case-converter.util.ts";
+import type { QueryParams } from "../interfaces/general.interface.ts";
+import type { UserBody } from "../interfaces/user.interface.ts";
+import { logUserAction } from "../utils/logger.util.ts";
 import {
   users,
   roles,
   rolePermissions,
   permissions,
 } from "../db/schema/index.ts";
-import { desc, eq, asc, sql, or, and, like, type AnyColumn } from "drizzle-orm";
-import { toCamelCase } from "../utils/case-converter.util.ts";
-import type { QueryParams } from "../interfaces/general.interface.ts";
-import type { UserBody } from "../interfaces/user.interface.ts";
-import { logUserAction } from "../utils/logger.util.ts";
+
+const isString = (a): a is string => typeof a === "string";
+
+const isUndefined = (a): a is undefined => typeof a === "undefined";
 
 // Mapping for sortable columns
 const sortableColumns: Record<string, AnyColumn> = {
@@ -32,11 +36,16 @@ export const fetchAllUsers = async (
     const page = parseInt(req.query.page || "1");
     const limit = parseInt(req.query.limit || "12");
     const search = (req.query.search as string) || "";
-    const active =
-      req.query.status !== undefined ? parseInt(req.query.status as string) : 0;
+
+    const active = !isUndefined(req.query.status)
+      ? parseInt(req.query.status as string)
+      : 0;
+
     const sortOrder = (req.query.sortOrder as string) || "asc";
+
     const sortByColumn =
       sortableColumns[req.query.sortBy as string] || users.lastname;
+
     const skip = (page - 1) * limit;
 
     // Build search condition
@@ -57,11 +66,9 @@ export const fetchAllUsers = async (
     // active === 1: return only active users
     // active === 2: return only inactive users
     let activeCondition;
-    if (active === 1) {
-      activeCondition = eq(users.active, true);
-    } else if (active === 2) {
-      activeCondition = eq(users.active, false);
-    }
+
+    if (active === 1) activeCondition = eq(users.active, true);
+    else if (active === 2) activeCondition = eq(users.active, false);
 
     // Combine search and active conditions
     const whereCondition = activeCondition
@@ -96,7 +103,9 @@ export const fetchAllUsers = async (
 
     // 📊 Total count (separate lightweight query)
     const totalCountResult = await db
-      .select({ count: sql<number>`count(*)` })
+      .select({
+        count: sql`count(*)`,
+      })
       .from(users)
       .where(whereCondition);
 
@@ -131,7 +140,11 @@ const getCurrentUserId = (req: FastifyRequest): string => {
 };
 
 export const fetchUserByAccountID = async (
-  req: FastifyRequest<{ Params: { id: string } }>,
+  req: FastifyRequest<{
+    Params: {
+      id: string;
+    };
+  }>,
   reply: FastifyReply
 ) => {
   console.log("fetchUserByAccountID accessed");
@@ -156,7 +169,7 @@ export const fetchUserByAccountID = async (
           title: roles.title,
           description: roles.description,
         },
-        permissions: sql<string>`
+        permissions: sql`
         COALESCE(
           JSON_ARRAYAGG(
             CASE 
@@ -176,25 +189,21 @@ export const fetchUserByAccountID = async (
       .groupBy(users.id, roles.id)
       .then((rows) => rows[0]);
 
-    if (!user) {
+    if (!user)
       return reply.status(404).send({
         message: "User not found",
       });
-    }
 
     // 🧹 Normalize permissions to string[]
     let perms: string[] = [];
 
-    if (Array.isArray(user.permissions)) {
-      perms = user.permissions;
-    } else if (typeof user.permissions === "string") {
+    if (Array.isArray(user.permissions)) perms = user.permissions;
+    else if (isString(user.permissions))
       try {
         perms = JSON.parse(user.permissions);
       } catch {
         perms = [];
       }
-    }
-
     // Only return specified fields: firstname, lastname, country, active, role, email, updatedAt
     const cleanedUser = {
       ...user,
@@ -226,6 +235,7 @@ export const createUser = async (
   reply: FastifyReply
 ) => {
   console.log("createUser accessed");
+
   const {
     email,
     username,
@@ -297,13 +307,12 @@ export const createUser = async (
       .where(eq(users.email, email));
 
     // Log user creation
-    if (newUser) {
+    if (newUser)
       await logUserAction({
         userId: newUser.id,
         functionName: "createUser",
         req,
       });
-    }
 
     reply.status(201).send({
       message: "User registered successfully",
@@ -319,7 +328,12 @@ export const createUser = async (
 };
 
 export const updateUser = async (
-  req: FastifyRequest<{ Params: { id: string }; Body: UserBody }>,
+  req: FastifyRequest<{
+    Params: {
+      id: string;
+    };
+    Body: UserBody;
+  }>,
   reply: FastifyReply
 ) => {
   console.log("updateUser accessed");
@@ -407,7 +421,11 @@ export const updateUser = async (
 };
 
 export const deleteUser = async (
-  req: FastifyRequest<{ Params: { id: string } }>,
+  req: FastifyRequest<{
+    Params: {
+      id: string;
+    };
+  }>,
   reply: FastifyReply
 ) => {
   console.log("deleteUser accessed");
@@ -429,18 +447,19 @@ export const deleteUser = async (
       .from(users)
       .where(eq(users.id, id));
 
-    if (!user) {
+    if (!user)
       return reply.status(404).send({
         message: `User with ID ${id} not found`,
       });
-    }
 
     // Toggle the active status
     const newActiveStatus = !user.active;
 
     await db
       .update(users)
-      .set({ active: newActiveStatus })
+      .set({
+        active: newActiveStatus,
+      })
       .where(eq(users.id, id));
 
     // Log user delete (toggle active status)

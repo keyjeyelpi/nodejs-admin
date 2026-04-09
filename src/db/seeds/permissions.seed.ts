@@ -1,6 +1,6 @@
+import { v4 as uuidv4 } from "uuid";
 import { db } from "../index.ts";
 import { permissions } from "../schema/index.ts";
-import { v4 as uuidv4 } from "uuid";
 
 // Define permission keys
 // System Administrator gets "all:access"
@@ -15,7 +15,6 @@ const PERMISSIONS = [
 
 export async function seed() {
   console.log("Seeding permissions...");
-
   // Check if permissions already exist
   const existingPermissions = await db.select().from(permissions);
 
@@ -38,6 +37,7 @@ export async function seed() {
   );
 
   const permissionsList = await db.select().from(permissions);
+
   console.log(
     "Created permissions:",
     permissionsList.map((p) => p.key)

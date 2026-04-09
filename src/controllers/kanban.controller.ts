@@ -1,6 +1,8 @@
 import type { FastifyRequest, FastifyReply } from "fastify";
 import { v4 as uuid } from "uuid";
+import { eq, asc, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
+import { logUserAction } from "../utils/logger.util.ts";
 import {
   kanbanBoards,
   kanbanColumns,
@@ -8,8 +10,8 @@ import {
   kanbanComments,
   users,
 } from "../db/schema/index.ts";
-import { eq, asc, desc, sql, and } from "drizzle-orm";
-import { logUserAction } from "../utils/logger.util.ts";
+
+const isUndefined = (a): a is undefined => typeof a === "undefined";
 
 const getCurrentUserId = (req: FastifyRequest): string => {
   return (req as any).user?.sub || "unknown";
@@ -17,12 +19,11 @@ const getCurrentUserId = (req: FastifyRequest): string => {
 
 // Define valid values as constants to avoid enum issues
 const VALID_PRIORITIES = ["URGENT", "HIGH", "MEDIUM", "LOW"] as const;
+
 const VALID_STATUSES = ["TO_DO", "DONE", "REVIEW", "PROCESS"] as const;
 
 type Priority = (typeof VALID_PRIORITIES)[number];
 type Status = (typeof VALID_STATUSES)[number];
-
-const isUndefined = (a: unknown): a is undefined => typeof a === "undefined";
 
 export const getAllKanbanBoards = async (
   req: FastifyRequest,
@@ -35,10 +36,9 @@ export const getAllKanbanBoards = async (
       limit?: string;
       search?: string;
     };
+
     const page = parseInt(query.page || "1");
     const limit = parseInt(query.limit || "10");
-    const skip = (page - 1) * limit;
-    const search = query.search;
 
     // Get all boards with their columns and cards
     const allBoards = await db
@@ -122,7 +122,7 @@ export const getAllKanbanBoards = async (
     );
 
     const totalCount = boardsWithColumns.length;
-    const startIndex = skip;
+    const startIndex = (page - 1) * limit;
     const endIndex = startIndex + limit;
     const paginatedBoards = boardsWithColumns.slice(startIndex, endIndex);
 
@@ -182,7 +182,11 @@ export const getBoardList = async (
 ) => {
   console.log("[KanbanController] getBoardList accessed");
   try {
-    const query = req.query as { page?: string; limit?: string };
+    const query = req.query as {
+      page?: string;
+      limit?: string;
+    };
+
     const page = parseInt(query.page || "1");
     const limit = parseInt(query.limit || "10");
     const skip = (page - 1) * limit;
@@ -221,7 +225,11 @@ export const getBoardList = async (
 };
 
 export const getBoardById = async (
-  req: FastifyRequest<{ Params: { id: string } }>,
+  req: FastifyRequest<{
+    Params: {
+      id: string;
+    };
+  }>,
   reply: FastifyReply
 ) => {
   console.log("[KanbanController] getBoardById accessed");
@@ -265,9 +273,16 @@ export const getKanbanBoardById = async (
   reply: FastifyReply
 ) => {
   console.log("[KanbanController] getKanbanBoardById accessed");
-  const params = req.params as { id?: string };
-  const { id } = params;
-  const query = req.query as { page?: string; limit?: string };
+
+  const { id } = req.params as {
+    id?: string;
+  };
+
+  const query = req.query as {
+    page?: string;
+    limit?: string;
+  };
+
   const page = parseInt(query.page || "1");
   const limit = parseInt(query.limit || "10");
   const skip = (page - 1) * limit;
@@ -306,7 +321,7 @@ export const getKanbanBoardById = async (
     // Count total cards
     const totalCardCountResult = await db
       .select({
-        count: sql<number>`count(*)`,
+        count: sql`count(*)`,
       })
       .from(kanbanCards)
       .innerJoin(
@@ -314,6 +329,7 @@ export const getKanbanBoardById = async (
         eq(kanbanCards.kanbanColumnId, kanbanColumns.id)
       )
       .where(eq(kanbanColumns.boardId, id));
+
     const totalCardCount = totalCardCountResult[0]?.count || 0;
 
     const columnsWithCards = await Promise.all(
@@ -443,7 +459,11 @@ export const getKanbanBoardById = async (
 };
 
 export const createBoard = async (
-  req: FastifyRequest<{ Body: { name?: string } }>,
+  req: FastifyRequest<{
+    Body: {
+      name?: string;
+    };
+  }>,
   reply: FastifyReply
 ) => {
   console.log("[KanbanController] createBoard accessed");
@@ -456,6 +476,7 @@ export const createBoard = async (
       });
 
     const boardId = uuid();
+
     await db.insert(kanbanBoards).values({
       id: boardId,
       name: name.trim(),
@@ -488,7 +509,14 @@ export const createBoard = async (
 };
 
 export const updateBoard = async (
-  req: FastifyRequest<{ Params: { id: string }; Body: { name?: string } }>,
+  req: FastifyRequest<{
+    Params: {
+      id: string;
+    };
+    Body: {
+      name?: string;
+    };
+  }>,
   reply: FastifyReply
 ) => {
   console.log("[KanbanController] updateBoard accessed");
@@ -508,7 +536,9 @@ export const updateBoard = async (
 
     await db
       .update(kanbanBoards)
-      .set({ name: name.trim() })
+      .set({
+        name: name.trim(),
+      })
       .where(eq(kanbanBoards.id, id));
 
     const updatedBoard = await db
@@ -544,7 +574,11 @@ export const updateBoard = async (
 };
 
 export const deleteBoard = async (
-  req: FastifyRequest<{ Params: { id: string } }>,
+  req: FastifyRequest<{
+    Params: {
+      id: string;
+    };
+  }>,
   reply: FastifyReply
 ) => {
   console.log("[KanbanController] deleteBoard accessed");
@@ -568,7 +602,6 @@ export const deleteBoard = async (
       });
 
     await db.delete(kanbanBoards).where(eq(kanbanBoards.id, id));
-
     // Log board deletion
     await logUserAction({
       userId: getCurrentUserId(req),
@@ -600,6 +633,7 @@ export const addColumn = async (
   reply: FastifyReply
 ) => {
   console.log("[KanbanController] addColumn accessed");
+
   const { boardId, name, disableAdd, order } = req.body || {};
 
   try {
@@ -609,10 +643,11 @@ export const addColumn = async (
       });
 
     const columnId = uuid();
+
     await db.insert(kanbanColumns).values({
       id: columnId,
       name: name.trim(),
-      boardId: boardId,
+      boardId,
       disableAdd: disableAdd || false,
       order: order || 0,
     });
@@ -645,8 +680,14 @@ export const addColumn = async (
 
 export const updateColumn = async (
   req: FastifyRequest<{
-    Params: { id: string };
-    Body: { name?: string; disableAdd?: boolean; order?: number };
+    Params: {
+      id: string;
+    };
+    Body: {
+      name?: string;
+      disableAdd?: boolean;
+      order?: number;
+    };
   }>,
   reply: FastifyReply
 ) => {
@@ -661,9 +702,12 @@ export const updateColumn = async (
       });
 
     const updateData: Record<string, unknown> = {};
-    if (name !== undefined) updateData.name = name;
-    if (disableAdd !== undefined) updateData.disableAdd = disableAdd;
-    if (order !== undefined) updateData.order = order;
+
+    if (!isUndefined(name)) updateData.name = name;
+
+    if (!isUndefined(disableAdd)) updateData.disableAdd = disableAdd;
+
+    if (!isUndefined(order)) updateData.order = order;
 
     await db
       .update(kanbanColumns)
@@ -702,7 +746,11 @@ export const updateColumn = async (
 };
 
 export const deleteColumn = async (
-  req: FastifyRequest<{ Params: { id: string } }>,
+  req: FastifyRequest<{
+    Params: {
+      id: string;
+    };
+  }>,
   reply: FastifyReply
 ) => {
   console.log("[KanbanController] deleteColumn accessed");
@@ -726,7 +774,6 @@ export const deleteColumn = async (
       });
 
     await db.delete(kanbanColumns).where(eq(kanbanColumns.id, id));
-
     // Log column deletion
     await logUserAction({
       userId: getCurrentUserId(req),
@@ -761,6 +808,7 @@ export const addCard = async (
   reply: FastifyReply
 ) => {
   console.log("[KanbanController] createCard accessed");
+
   const {
     columnId,
     title,
@@ -778,6 +826,7 @@ export const addCard = async (
       });
 
     const cardId = uuid();
+
     await db.insert(kanbanCards).values({
       id: cardId,
       title: title.trim(),
@@ -817,7 +866,9 @@ export const addCard = async (
 
 export const updateCard = async (
   req: FastifyRequest<{
-    Params: { id: string };
+    Params: {
+      id: string;
+    };
     Body: {
       title?: string;
       description?: string;
@@ -849,13 +900,20 @@ export const updateCard = async (
       });
 
     const updateData: Record<string, unknown> = {};
-    if (title !== undefined) updateData.title = title;
-    if (description !== undefined) updateData.description = description;
-    if (categoryTitle !== undefined) updateData.categoryTitle = categoryTitle;
-    if (categoryColor !== undefined) updateData.categoryColor = categoryColor;
-    if (priority !== undefined) updateData.priority = priority;
-    if (status !== undefined) updateData.status = status;
-    if (likes !== undefined) updateData.likes = likes;
+
+    if (!isUndefined(title)) updateData.title = title;
+
+    if (!isUndefined(description)) updateData.description = description;
+
+    if (!isUndefined(categoryTitle)) updateData.categoryTitle = categoryTitle;
+
+    if (!isUndefined(categoryColor)) updateData.categoryColor = categoryColor;
+
+    if (!isUndefined(priority)) updateData.priority = priority;
+
+    if (!isUndefined(status)) updateData.status = status;
+
+    if (!isUndefined(likes)) updateData.likes = likes;
 
     await db.update(kanbanCards).set(updateData).where(eq(kanbanCards.id, id));
 
@@ -891,7 +949,11 @@ export const updateCard = async (
 };
 
 export const deleteCard = async (
-  req: FastifyRequest<{ Params: { id: string } }>,
+  req: FastifyRequest<{
+    Params: {
+      id: string;
+    };
+  }>,
   reply: FastifyReply
 ) => {
   console.log("[KanbanController] deleteCard accessed");
@@ -915,7 +977,6 @@ export const deleteCard = async (
       });
 
     await db.delete(kanbanCards).where(eq(kanbanCards.id, id));
-
     // Log card deletion
     await logUserAction({
       userId: getCurrentUserId(req),
@@ -947,6 +1008,7 @@ export const addComment = async (
   reply: FastifyReply
 ) => {
   console.log("[KanbanController] createComment accessed");
+
   const { cardId, text, userId, replyForCommentId } = req.body || {};
 
   try {
@@ -956,10 +1018,11 @@ export const addComment = async (
       });
 
     const commentId = uuid();
+
     await db.insert(kanbanComments).values({
       id: commentId,
       text: text.trim(),
-      userId: userId,
+      userId,
       kanbanCardId: cardId,
       replyForKanbanCommentId: replyForCommentId || null,
     });
@@ -991,7 +1054,11 @@ export const addComment = async (
 };
 
 export const deleteComment = async (
-  req: FastifyRequest<{ Params: { id: string } }>,
+  req: FastifyRequest<{
+    Params: {
+      id: string;
+    };
+  }>,
   reply: FastifyReply
 ) => {
   console.log("[KanbanController] deleteComment accessed");
@@ -1036,7 +1103,14 @@ export const deleteComment = async (
 };
 
 export const updateComment = async (
-  req: FastifyRequest<{ Params: { id: string }; Body: { text?: string } }>,
+  req: FastifyRequest<{
+    Params: {
+      id: string;
+    };
+    Body: {
+      text?: string;
+    };
+  }>,
   reply: FastifyReply
 ) => {
   console.log("[KanbanController] updateComment accessed");
@@ -1056,7 +1130,9 @@ export const updateComment = async (
 
     await db
       .update(kanbanComments)
-      .set({ text: text.trim() })
+      .set({
+        text: text.trim(),
+      })
       .where(eq(kanbanComments.id, id));
 
     const updatedComment = await db
@@ -1102,6 +1178,7 @@ export const addReply = async (
   reply: FastifyReply
 ) => {
   console.log("[KanbanController] addReply accessed");
+
   const { kanbanCardId, replyForKanbanCommentId, text, userId } =
     req.body || {};
 
@@ -1112,11 +1189,12 @@ export const addReply = async (
       });
 
     const commentId = uuid();
+
     await db.insert(kanbanComments).values({
       id: commentId,
       text: text.trim(),
-      userId: userId,
-      kanbanCardId: kanbanCardId,
+      userId,
+      kanbanCardId,
       replyForKanbanCommentId: replyForKanbanCommentId || null,
     });
 
@@ -1140,7 +1218,11 @@ export const addReply = async (
 };
 
 export const getReplies = async (
-  req: FastifyRequest<{ Params: { commentId: string } }>,
+  req: FastifyRequest<{
+    Params: {
+      commentId: string;
+    };
+  }>,
   reply: FastifyReply
 ) => {
   console.log("[KanbanController] getReplies accessed");
@@ -1182,7 +1264,11 @@ export const getReplies = async (
 };
 
 export const likeCard = async (
-  req: FastifyRequest<{ Params: { id: string } }>,
+  req: FastifyRequest<{
+    Params: {
+      id: string;
+    };
+  }>,
   reply: FastifyReply
 ) => {
   console.log("[KanbanController] likeCard accessed");
@@ -1207,7 +1293,9 @@ export const likeCard = async (
 
     await db
       .update(kanbanCards)
-      .set({ likes: (card.likes || 0) + 1 })
+      .set({
+        likes: (card.likes || 0) + 1,
+      })
       .where(eq(kanbanCards.id, id));
 
     const updatedCard = await db
@@ -1231,12 +1319,16 @@ export const likeCard = async (
 
 export const moveCard = async (
   req: FastifyRequest<{
-    Body: { cardId?: string; newColumnId?: string; newIndex?: number };
+    Body: {
+      cardId?: string;
+      newColumnId?: string;
+      newIndex?: number;
+    };
   }>,
   reply: FastifyReply
 ) => {
   console.log("[KanbanController] moveCard accessed");
-  const { cardId, newColumnId, newIndex } = req.body || {};
+  const { cardId, newColumnId } = req.body || {};
 
   try {
     if (!cardId?.trim() || !newColumnId?.trim())
@@ -1257,7 +1349,9 @@ export const moveCard = async (
 
     await db
       .update(kanbanCards)
-      .set({ kanbanColumnId: newColumnId })
+      .set({
+        kanbanColumnId: newColumnId,
+      })
       .where(eq(kanbanCards.id, cardId));
 
     const updatedCard = await db

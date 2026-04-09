@@ -1,10 +1,9 @@
-import process from "node:process";
-import dotenv from "dotenv";
 import type { FastifyRequest, FastifyReply } from "fastify";
 import { decrypt, encrypt } from "../utils/encryption.util.ts";
 
 export const signature = async (req: FastifyRequest, reply: FastifyReply) => {
   console.log("signature middleware accessed");
+
   if (req.method === "GET") return;
 
   if (!req.body)

@@ -1,6 +1,19 @@
 {
   "rules": {
+    "nodejs/explicit-import": "off",
+    "remove-useless-async": "off",
     "remove-unused-variables": "on",
-    "remove-console": "off"
-  }
+    "remove-unused-expressions": "on",
+    "remove-console": ["off", { "allow": ["warn", "error"] }],
+    "convert-template-to-string": "on",
+    "simplify-ternary": "on",
+    "remove-useless-escape": "on",
+    "remove-useless-spread": "on",
+    "remove-useless-return": "on",
+    "remove-useless-arguments": "on",
+    "remove-empty": "on",
+    "remove-unreachable-code": "on",
+    "convert-commonjs-to-esm": "off"
+  },
+  "ignore": ["**/*.d.ts", "**/*.json"]
 }

@@ -1,6 +1,4 @@
-import process from "node:process";
 import cors from "@fastify/cors";
-import dotenv from "dotenv";
 import fastify from "fastify";
 import fastifyHelmet from "@fastify/helmet";
 import routes from "./routes/index.ts";
@@ -8,6 +6,7 @@ import routes from "./routes/index.ts";
 const app = fastify({
   logger: true,
 });
+
 const PORT = process.env.PORT || 3000;
 
 async function start() {
@@ -19,7 +18,6 @@ async function start() {
 
     // Register Helmet
     await app.register(fastifyHelmet);
-
     // Register routes
     await app.register(routes);
 
