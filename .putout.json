@@ -1,7 +1,6 @@
 {
   "rules": {
     "nodejs/explicit-import": "off",
-    "remove-useless-async": "off",
     "remove-unused-variables": "on",
     "remove-unused-expressions": "on",
     "remove-console": ["off", { "allow": ["warn", "error"] }],

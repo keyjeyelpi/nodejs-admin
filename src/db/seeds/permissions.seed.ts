@@ -16,6 +16,7 @@ const PERMISSIONS = [
 export async function seed() {
   console.log("Seeding permissions...");
   // Check if permissions already exist
+
   const existingPermissions = await db.select().from(permissions);
 
   if (existingPermissions.length > 0) {

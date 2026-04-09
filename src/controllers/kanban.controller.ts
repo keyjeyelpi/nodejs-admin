@@ -602,6 +602,7 @@ export const deleteBoard = async (
       });
 
     await db.delete(kanbanBoards).where(eq(kanbanBoards.id, id));
+
     // Log board deletion
     await logUserAction({
       userId: getCurrentUserId(req),
@@ -774,6 +775,7 @@ export const deleteColumn = async (
       });
 
     await db.delete(kanbanColumns).where(eq(kanbanColumns.id, id));
+
     // Log column deletion
     await logUserAction({
       userId: getCurrentUserId(req),
@@ -977,6 +979,7 @@ export const deleteCard = async (
       });
 
     await db.delete(kanbanCards).where(eq(kanbanCards.id, id));
+
     // Log card deletion
     await logUserAction({
       userId: getCurrentUserId(req),

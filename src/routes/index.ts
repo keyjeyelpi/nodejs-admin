@@ -6,7 +6,7 @@ import usersRoutes from "./users.route.ts";
 import userSettingsRoutes from "./user-settings.route.ts";
 import { error404, globalErrorHandler } from "../controllers/index.ts";
 
-export default async function routes(fastify: FastifyInstance) {
+const routes = async (fastify: FastifyInstance) => {
   fastify.register(rolesRoutes, {
     prefix: "/roles",
   });
@@ -28,3 +28,5 @@ export default async function routes(fastify: FastifyInstance) {
   // Global error handler
   fastify.setErrorHandler(globalErrorHandler);
 }
+
+export default routes;

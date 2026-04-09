@@ -7,6 +7,7 @@ import { users, roles } from "../schema/index.ts";
 export async function seed() {
   console.log("Seeding users...");
   // Check if roles exist
+
   const rolesList = await db.select().from(roles);
 
   if (!rolesList.length) {
@@ -53,7 +54,6 @@ export async function seed() {
 
   console.log("Created Kim Joseph Penaloza with System Administrator role");
   // Get other roles for random users (exclude System Administrator)
-
   const otherRoles = rolesList.filter(
     (r) => r.title !== "System Administrator"
   );
@@ -97,8 +97,8 @@ export async function seed() {
   console.log(
     "Users seeding complete! Created 50 users (1 Kim Joseph Penaloza + 49 random)"
   );
-
   // Count active vs inactive users
+
   const allUsers = await db
     .select({
       active: users.active,

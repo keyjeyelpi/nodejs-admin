@@ -1,5 +1,5 @@
 import type { FastifyRequest, FastifyReply } from "fastify";
-import { desc, eq, asc, sql, or, and, like, AnyColumn } from "drizzle-orm";
+import { desc, eq, asc, sql, or, and, like, type AnyColumn } from "drizzle-orm";
 import { db } from "../db/index.ts";
 import { toCamelCase } from "../utils/case-converter.util.ts";
 import type { QueryParams } from "../interfaces/general.interface.ts";
@@ -12,9 +12,6 @@ import {
   permissions,
 } from "../db/schema/index.ts";
 
-const isString = (a): a is string => typeof a === "string";
-
-const isUndefined = (a): a is undefined => typeof a === "undefined";
 
 // Mapping for sortable columns
 const sortableColumns: Record<string, AnyColumn> = {
@@ -37,7 +34,7 @@ export const fetchAllUsers = async (
     const limit = parseInt(req.query.limit || "12");
     const search = (req.query.search as string) || "";
 
-    const active = !isUndefined(req.query.status)
+    const active = !!(req.query.status)
       ? parseInt(req.query.status as string)
       : 0;
 
@@ -51,14 +48,14 @@ export const fetchAllUsers = async (
     // Build search condition
     const searchCondition = search
       ? or(
-          eq(users.id, search),
-          like(users.lastname, `%${search}%`),
-          like(users.firstname, `%${search}%`),
-          like(users.email, `%${search}%`),
-          like(users.username, `%${search}%`),
-          like(users.country, `%${search}%`),
-          like(users.contactnumber, `%${search}%`)
-        )
+        eq(users.id, search),
+        like(users.lastname, `%${search}%`),
+        like(users.firstname, `%${search}%`),
+        like(users.email, `%${search}%`),
+        like(users.username, `%${search}%`),
+        like(users.country, `%${search}%`),
+        like(users.contactnumber, `%${search}%`)
+      )
       : undefined;
 
     // Build active filter condition
@@ -198,7 +195,7 @@ export const fetchUserByAccountID = async (
     let perms: string[] = [];
 
     if (Array.isArray(user.permissions)) perms = user.permissions;
-    else if (isString(user.permissions))
+    else if (typeof user.permissions === "string")
       try {
         perms = JSON.parse(user.permissions);
       } catch {

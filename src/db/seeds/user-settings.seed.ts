@@ -4,6 +4,7 @@ import { users, userSettings } from "../schema/index.ts";
 export async function seed() {
   console.log("Seeding user settings...");
   // Check if users exist
+
   const existingUsers = await db.select().from(users);
 
   if (!existingUsers.length) {

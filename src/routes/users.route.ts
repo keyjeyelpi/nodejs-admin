@@ -16,7 +16,7 @@ interface QueryParams {
   sortBy?: string;
 }
 
-export default async function usersRoutes(fastify: FastifyInstance) {
+const usersRoutes = async (fastify: FastifyInstance) => {
   fastify.get<{ Querystring: QueryParams }>(
     "/",
     { preHandler: [authenticateJWT] },
@@ -48,3 +48,5 @@ export default async function usersRoutes(fastify: FastifyInstance) {
     };
   }>("/:id", { preHandler: [authenticateJWT] }, deleteUser);
 }
+
+export default usersRoutes;

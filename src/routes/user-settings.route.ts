@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { authenticateJWT } from "../middleware/jwt.middleware.ts";
 import { signature } from "../middleware/signature.middleware.ts";
 
-export default async function userSettingsRoutes(fastify: FastifyInstance) {
+const userSettingsRoutes = async (fastify: FastifyInstance) => {
   fastify.get("/", { preHandler: [authenticateJWT, signature] }, async () => ({
     message: "User settings",
   }));
@@ -23,3 +23,5 @@ export default async function userSettingsRoutes(fastify: FastifyInstance) {
     message: "Delete user settings",
   }));
 }
+
+export default userSettingsRoutes;

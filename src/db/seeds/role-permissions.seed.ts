@@ -4,6 +4,7 @@ import { roles, permissions, rolePermissions } from "../schema/index.ts";
 export async function seed() {
   console.log("Seeding role permissions...");
   // Check if role permissions already exist
+
   const existingRolePermissions = await db.select().from(rolePermissions);
 
   if (existingRolePermissions.length > 0)
@@ -23,7 +24,6 @@ export async function seed() {
 
   console.log("Creating default role permissions...");
   // Helper function to find permission by key
-
   const findPermission = (key: string) =>
     permissionsList.find((p) => p.key === key);
 

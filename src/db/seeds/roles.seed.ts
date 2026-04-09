@@ -5,6 +5,7 @@ import { roles } from "../schema/index.ts";
 export async function seed() {
   console.log("Seeding roles...");
   // Check if roles already exist
+
   const existingRoles = await db.select().from(roles);
 
   if (existingRoles.length > 0) await db.delete(roles).execute();

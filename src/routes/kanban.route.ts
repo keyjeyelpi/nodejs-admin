@@ -24,7 +24,7 @@ import {
   likeCard,
 } from "../controllers/kanban.controller.ts";
 
-export default async function kanbanRoutes(fastify: FastifyInstance) {
+const kanbanRoutes = async (fastify: FastifyInstance) => {
   fastify.get("/", { preHandler: [authenticateJWT] }, getAllKanbanBoards);
 
   fastify.get("/list", { preHandler: [authenticateJWT] }, getBoardList);
@@ -168,3 +168,5 @@ export default async function kanbanRoutes(fastify: FastifyInstance) {
     };
   }>("/card/:id/like", { preHandler: [authenticateJWT, signature] }, likeCard);
 }
+
+export default kanbanRoutes;

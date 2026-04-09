@@ -495,6 +495,7 @@ export const logout = async (
 
     // Delete the refresh token (logout)
     await db.delete(userTokens).where(eq(userTokens.id, tokenResult.id));
+
     // Log logout
     await logUserAction({
       userId: tokenResult.userID,
