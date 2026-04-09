@@ -42,14 +42,14 @@ export const fetchAllUsers = async (
     // Build search condition
     const searchCondition = search
       ? or(
-        eq(users.id, search),
-        like(users.lastname, `%${search}%`),
-        like(users.firstname, `%${search}%`),
-        like(users.email, `%${search}%`),
-        like(users.username, `%${search}%`),
-        like(users.country, `%${search}%`),
-        like(users.contactnumber, `%${search}%`)
-      )
+          eq(users.id, search),
+          like(users.lastname, `%${search}%`),
+          like(users.firstname, `%${search}%`),
+          like(users.email, `%${search}%`),
+          like(users.username, `%${search}%`),
+          like(users.country, `%${search}%`),
+          like(users.contactnumber, `%${search}%`)
+        )
       : undefined;
 
     // Build active filter condition
@@ -231,9 +231,7 @@ export const createUser = async (
     username,
     password,
     country,
-    role: {
-      id: roleId,
-    },
+    role: { id: roleId },
     lastname,
     firstname,
     contactnumber,
@@ -328,9 +326,7 @@ export const updateUser = async (
   const { id } = req.params;
   const {
     country,
-    role: {
-      id: roleId,
-    },
+    role: { id: roleId },
     lastname,
     firstname,
     email,

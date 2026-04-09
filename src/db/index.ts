@@ -3,8 +3,6 @@ import mysql from "mysql2/promise";
 import * as schema from "./schema/index.ts";
 import dotenv from "dotenv";
 
-dotenv.config();
-
 const connection = await mysql.createConnection({
   uri: process.env.DATABASE_URL || "mysql://user:password@localhost:3306/db",
 });

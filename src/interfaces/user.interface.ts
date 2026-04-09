@@ -9,6 +9,6 @@ export interface UserBody {
   active: boolean;
   role: {
     id: string;
-  },
+  };
   password?: string;
 }

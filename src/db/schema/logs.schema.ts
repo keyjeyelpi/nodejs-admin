@@ -1,8 +1,4 @@
-import {
-  mysqlTable,
-  varchar,
-  datetime,
-} from "drizzle-orm/mysql-core";
+import { mysqlTable, varchar, datetime } from "drizzle-orm/mysql-core";
 import { sql } from "drizzle-orm";
 
 export const logs = mysqlTable("logs", {

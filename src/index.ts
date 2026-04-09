@@ -5,7 +5,6 @@ import fastify from "fastify";
 import fastifyHelmet from "@fastify/helmet";
 import routes from "./routes/index.ts";
 
-dotenv.config();
 const app = fastify({
   logger: true,
 });

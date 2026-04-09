@@ -3,8 +3,6 @@ import type { FastifyRequest, FastifyReply } from "fastify";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 
-dotenv.config();
-
 interface JwtPayload {
   sub: string;
   username: string;

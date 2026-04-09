@@ -28,12 +28,21 @@ export const getModuleFromUrl = (url: string): string => {
  */
 export const getActionFromFunctionName = (functionName: string): string => {
   const actionPatterns = [
-    "fetch", "get", "load", "fetchAll", "fetchBy",
-    "create", "add", "insert",
-    "update", "edit", "modify",
-    "delete", "remove"
+    "fetch",
+    "get",
+    "load",
+    "fetchAll",
+    "fetchBy",
+    "create",
+    "add",
+    "insert",
+    "update",
+    "edit",
+    "modify",
+    "delete",
+    "remove",
   ];
-  
+
   for (const action of actionPatterns) {
     if (functionName.toLowerCase().startsWith(action)) {
       return action;
@@ -42,11 +51,7 @@ export const getActionFromFunctionName = (functionName: string): string => {
   return functionName.toLowerCase();
 };
 
-export const createLog = async ({ 
-  userId, 
-  action, 
-  module 
-}: LogParams) => {
+export const createLog = async ({ userId, action, module }: LogParams) => {
   try {
     await db.insert(logs).values({
       id: uuidv4(),
@@ -77,7 +82,7 @@ export const logUserAction = async ({
 }) => {
   const action = getActionFromFunctionName(functionName);
   const module = req?.url ? getModuleFromUrl(req.url) : "unknown";
-  
+
   await createLog({
     userId,
     action,

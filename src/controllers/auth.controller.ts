@@ -4,7 +4,14 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { eq, or, lt, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
-import { permissions, rolePermissions, roles, users, userSettings, userTokens } from "../db/schema/index.ts";
+import {
+  permissions,
+  rolePermissions,
+  roles,
+  users,
+  userSettings,
+  userTokens,
+} from "../db/schema/index.ts";
 import { decrypt } from "../utils/encryption.util.js";
 import { toCamelCase } from "../utils/case-converter.util.ts";
 import { randomUUID } from "node:crypto";
