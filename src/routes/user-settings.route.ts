@@ -22,6 +22,6 @@ const userSettingsRoutes = async (fastify: FastifyInstance) => {
   }>("/:user_id", { preHandler: [authenticateJWT, signature] }, async () => ({
     message: "Delete user settings",
   }));
-}
+};
 
 export default userSettingsRoutes;

@@ -7,9 +7,6 @@
     "db:migrate": "drizzle-kit migrate",
     "start": "bun run --env-file=.env src/index.ts",
     "dev": "bun run --env-file=.env --watch src/index.ts",
-    "lint:fix": "bun run putout:fix && bun run format",
-    "putout": "bunx putout src",
-    "putout:fix": "bunx putout src --fix",
     "format": "bunx prettier --write ."
   },
   "devDependencies": {

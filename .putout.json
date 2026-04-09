@@ -1,6 +1,8 @@
 {
   "rules": {
     "nodejs/explicit-import": "off",
+    "promise/remove-useless-async": "off",
+    "remove-useless-async": "off",
     "remove-unused-variables": "on",
     "remove-unused-expressions": "on",
     "remove-console": ["off", { "allow": ["warn", "error"] }],
@@ -14,5 +16,6 @@
     "remove-unreachable-code": "on",
     "convert-commonjs-to-esm": "off"
   },
+  "plugins": ["remove-useless-async"],
   "ignore": ["**/*.d.ts", "**/*.json"]
 }

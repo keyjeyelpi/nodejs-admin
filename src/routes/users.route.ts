@@ -47,6 +47,6 @@ const usersRoutes = async (fastify: FastifyInstance) => {
       id: string;
     };
   }>("/:id", { preHandler: [authenticateJWT] }, deleteUser);
-}
+};
 
 export default usersRoutes;

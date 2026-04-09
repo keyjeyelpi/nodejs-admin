@@ -167,6 +167,6 @@ const kanbanRoutes = async (fastify: FastifyInstance) => {
       id: string;
     };
   }>("/card/:id/like", { preHandler: [authenticateJWT, signature] }, likeCard);
-}
+};
 
 export default kanbanRoutes;

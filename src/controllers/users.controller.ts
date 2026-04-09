@@ -12,7 +12,6 @@ import {
   permissions,
 } from "../db/schema/index.ts";
 
-
 // Mapping for sortable columns
 const sortableColumns: Record<string, AnyColumn> = {
   id: users.id,
@@ -34,7 +33,7 @@ export const fetchAllUsers = async (
     const limit = parseInt(req.query.limit || "12");
     const search = (req.query.search as string) || "";
 
-    const active = !!(req.query.status)
+    const active = !!req.query.status
       ? parseInt(req.query.status as string)
       : 0;
 
@@ -48,14 +47,14 @@ export const fetchAllUsers = async (
     // Build search condition
     const searchCondition = search
       ? or(
-        eq(users.id, search),
-        like(users.lastname, `%${search}%`),
-        like(users.firstname, `%${search}%`),
-        like(users.email, `%${search}%`),
-        like(users.username, `%${search}%`),
-        like(users.country, `%${search}%`),
-        like(users.contactnumber, `%${search}%`)
-      )
+          eq(users.id, search),
+          like(users.lastname, `%${search}%`),
+          like(users.firstname, `%${search}%`),
+          like(users.email, `%${search}%`),
+          like(users.username, `%${search}%`),
+          like(users.country, `%${search}%`),
+          like(users.contactnumber, `%${search}%`)
+        )
       : undefined;
 
     // Build active filter condition

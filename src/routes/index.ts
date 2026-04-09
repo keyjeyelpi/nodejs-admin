@@ -27,6 +27,6 @@ const routes = async (fastify: FastifyInstance) => {
   fastify.setNotFoundHandler(error404);
   // Global error handler
   fastify.setErrorHandler(globalErrorHandler);
-}
+};
 
 export default routes;
