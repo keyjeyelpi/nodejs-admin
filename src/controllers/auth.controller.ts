@@ -135,6 +135,8 @@ export const login = async (
     const refreshToken = randomUUID();
     const expiresAt = getCurrentUTCTime();
 
+    console.log({ refreshToken })
+
     expiresAt.setUTCDate(expiresAt.getUTCDate() + 1);
     // 1 day expiry
     await db.insert(userTokens).values({
@@ -155,7 +157,8 @@ export const login = async (
       data: {
         token,
         refreshToken,
-        expiresAt: new Date(Date.now() + EXPIRATION_IN_MINUTES * 60 * 1000), // Already in UTC milliseconds
+        refreshTokenExpiresAt: new Date(Date.now() + EXPIRATION_IN_MINUTES * 60 * 1000), // Already in UTC milliseconds
+        expiresAt,
         ...(toCamelCase(userResult) || {}),
       },
     });
@@ -168,55 +171,48 @@ export const login = async (
   }
 };
 
-export const validateSession = async (
-  req: FastifyRequest,
+export const refreshToken = async (
+  req: FastifyRequest<{ Body: { refreshToken?: string } }>,
   reply: FastifyReply
 ) => {
-  // Extract token from Authorization header
-  const authHeader = req.headers.authorization;
+  // Clean up expired tokens
+  await cleanupExpiredTokensInternal();
 
-  if (!authHeader || !authHeader.startsWith("Bearer "))
-    return reply.status(401).send({
-      message: "Authorization header with Bearer token is required",
+  if (!req.body)
+    return reply.status(400).send({
+      message: "Request body is missing",
     });
 
-  const token = authHeader.substring(7);
+  const { refreshToken: token } = req.body;
 
-  // Remove "Bearer " prefix
   if (!token)
-    return reply.status(401).send({
-      message: "Token is required",
+    return reply.status(400).send({
+      message: "Refresh token is required",
     });
 
   try {
-    // Verify and decode the JWT token
-    let decoded: TokenPayload;
+    // Find refresh token in DB
+    const tokenResult = await db
+      .select({
+        id: userTokens.id,
+        token: userTokens.token,
+        userID: userTokens.userID,
+        expiration: userTokens.expiration,
+      })
+      .from(userTokens)
+      .where(eq(userTokens.token, token))
+      .then((rows) => rows[0]);
 
-    try {
-      decoded = jwt.verify(token, JWT_SECRET) as TokenPayload;
-    } catch (jwtError: any) {
-      // Handle specific JWT errors
-      if (jwtError.name === "TokenExpiredError")
-        return reply.status(401).send({
-          message: "Session expired. Please login again.",
-        });
+    if (!tokenResult)
+      return reply.status(401).send({ message: "Invalid refresh token" });
 
-      // Invalid token ( malformed, wrong signature, etc.)
-      console.warn("Invalid JWT token:", jwtError.message);
-      return reply.status(401).send({
-        message: "Authentication failed. Invalid token.",
-      });
-    }
+    // Check expiration
+    const now = getCurrentUTCTime();
+    const expiresAt = tokenResult.expiration;
+    if (now > new Date(expiresAt))
+      return reply.status(401).send({ message: "Refresh token has expired" });
 
-    // Get the user ID from the decoded token
-    const userId = decoded.sub;
-
-    if (!userId)
-      return reply.status(401).send({
-        message: "Invalid token payload",
-      });
-
-    // Fetch the complete user profile from the database
+    // Fetch user
     const userResult = await db
       .select({
         id: users.id,
@@ -243,36 +239,31 @@ export const validateSession = async (
           description: roles.description,
         },
         permissions: sql`
-        COALESCE(
-          JSON_ARRAYAGG(
-            CASE 
-              WHEN ${permissions.key} IS NOT NULL 
-              THEN ${permissions.key}
-            END
-          ),
-          JSON_ARRAY()
-        )
-      `,
+          COALESCE(
+            JSON_ARRAYAGG(
+              CASE
+                WHEN ${permissions.key} IS NOT NULL THEN ${permissions.key}
+              END
+            ),
+            JSON_ARRAY()
+          )
+        `,
       })
       .from(users)
       .leftJoin(roles, eq(users.roleId, roles.id))
       .leftJoin(rolePermissions, eq(rolePermissions.roleId, roles.id))
       .leftJoin(permissions, eq(rolePermissions.permissionId, permissions.id))
       .leftJoin(userSettings, eq(users.id, userSettings.userId))
-      .where(eq(users.id, userId))
+      .where(eq(users.id, tokenResult.userID))
       .groupBy(users.id, roles.id)
       .then((rows) => rows[0]);
 
-    // Check if user exists
     if (!userResult)
-      return reply.status(401).send({
-        message: "Account not found. Please contact support.",
-      });
+      return reply.status(401).send({ message: "Invalid refresh token" });
 
-    // Check if user is active
     if (!userResult.active)
       return reply.status(403).send({
-        message: "Account is disabled. Please contact support.",
+        message: "User account is inactive. Please contact support.",
       });
 
     // Generate new access token
@@ -284,179 +275,43 @@ export const validateSession = async (
         permissions: userResult.permissions || [],
       },
       JWT_SECRET,
-      {
-        expiresIn: EXPIRES_AT,
-      }
+      { expiresIn: EXPIRES_AT }
     );
 
     // Generate new refresh token
-    const refreshToken = randomUUID();
-    const expiresAt = getCurrentUTCTime();
-
-    expiresAt.setUTCDate(expiresAt.getUTCDate() + 1);
-    // 1 day expiry
-    await db.insert(userTokens).values({
-      token: refreshToken,
-      userID: userResult.id,
-      expiration: expiresAt,
-    } as any);
-
-    // Log session validation
-    await logUserAction({
-      userId: userResult.id,
-      functionName: "validateSession",
-      req,
-    });
-
-    // Return the same response structure as login
-    reply.send({
-      message: "Session validated successfully",
-      data: {
-        token: newAccessToken,
-        refreshToken,
-        expiresAt: new Date(Date.now() + EXPIRATION_IN_MINUTES * 60 * 1000),
-        ...(toCamelCase(userResult) || {}),
-      },
-    });
-  } catch (err) {
-    console.error("Error validating session:", err);
-    return reply.status(500).send({
-      message: "Server error",
-      error: err,
-    });
-  }
-};
-
-export const refreshToken = async (
-  req: FastifyRequest<{
-    Body: {
-      refreshToken?: string;
-    };
-  }>,
-  reply: FastifyReply
-) => {
-  // Clean up expired tokens before processing
-  await cleanupExpiredTokensInternal();
-
-  if (!req.body)
-    return reply.status(400).send({
-      message: "Request body is missing",
-    });
-
-  const { refreshToken: token } = req.body || {};
-
-  if (!token) {
-    console.warn("Refresh token is missing in request body");
-    return reply.status(400).send({
-      message: "Refresh token is required",
-    });
-  }
-
-  try {
-    // Find the refresh token in the database
-    const tokenResult = await db
-      .select({
-        id: userTokens.id,
-        token: userTokens.token,
-        userID: userTokens.userID,
-        expiration: userTokens.expiration,
-      })
-      .from(userTokens)
-      .where(eq(userTokens.token, token))
-      .then((rows) => rows[0]);
-
-    if (!tokenResult) {
-      console.warn("Refresh token not found in database:", token);
-      return reply.status(401).send({
-        message: "Invalid refresh token",
-      });
-    }
-
-    // Check if token has expired
-    const now = getCurrentUTCTime();
-    const expiresAt = new Date(tokenResult.expiration as unknown as string);
-
-    if (now > expiresAt) {
-      // Delete expired token
-      await db.delete(userTokens).where(eq(userTokens.id, tokenResult.id));
-      return reply.status(401).send({
-        message: "Session expired",
-      });
-    }
-
-    // Get user information
-    const userResult = await db
-      .select({
-        id: users.id,
-        userId: users.id,
-        country: users.country,
-        roleId: users.roleId,
-        lastname: users.lastname,
-        firstname: users.firstname,
-        email: users.email,
-        username: users.username,
-        contactnumber: users.contactnumber,
-        active: users.active,
-      })
-      .from(users)
-      .where(eq(users.id, tokenResult.userID))
-      .then((rows) => rows[0]);
-
-    if (!userResult || !userResult.active)
-      return reply.status(401).send({
-        message: "User not found or inactive",
-      });
-
-    // Generate new access token
-    const newAccessToken = jwt.sign(
-      {
-        sub: userResult.id,
-        username: userResult.username,
-        role: userResult.roleId || "user",
-      },
-      JWT_SECRET,
-      {
-        expiresIn: EXPIRES_AT,
-      }
-    );
-
-    // Optional: Rotate refresh token (generate new one and invalidate old one)
     const newRefreshToken = randomUUID();
     const newExpiresAt = getCurrentUTCTime();
-
     newExpiresAt.setUTCDate(newExpiresAt.getUTCDate() + 1);
-    // 1 day expiry
-    // Delete old refresh token and create new one
-    await db.delete(userTokens).where(eq(userTokens.id, tokenResult.id));
-    await db.insert(userTokens).values({
-      token: newRefreshToken,
-      userID: userResult.id,
-      expiration: newExpiresAt,
-    } as any);
 
-    // Log token refresh
+    // Update refresh token in DB
+    await db
+      .update(userTokens)
+      .set({ token: newRefreshToken, expiration: newExpiresAt })
+      .where(eq(userTokens.id, tokenResult.id));
+
+    // Log action
     await logUserAction({
       userId: userResult.id,
       functionName: "refreshToken",
       req,
     });
 
+    // Return same structure as validateSession
     reply.send({
       message: "Token refreshed successfully",
       data: {
         token: newAccessToken,
         refreshToken: newRefreshToken,
+        refreshTokenExpiresAt: newExpiresAt,
+        expiresAt: new Date(Date.now() + EXPIRATION_IN_MINUTES * 60 * 1000),
+        ...(toCamelCase(userResult) || {}),
       },
     });
   } catch (err) {
     console.error(err);
-    return reply.status(500).send({
-      message: "Server error",
-      error: err,
-    });
+    return reply.status(500).send({ message: "Server error", error: err });
   }
 };
-
 export const logout = async (
   req: FastifyRequest<{
     Body: {
@@ -465,6 +320,9 @@ export const logout = async (
   }>,
   reply: FastifyReply
 ) => {
+
+  console.log("Logout accessed");
+
   // Clean up expired tokens before processing
   await cleanupExpiredTokensInternal();
 
@@ -501,6 +359,8 @@ export const logout = async (
         message: "Refresh token not found",
       });
     }
+
+    console.log(userTokens.id, tokenResult.id);
 
     // Delete the refresh token (logout)
     await db.delete(userTokens).where(eq(userTokens.id, tokenResult.id));

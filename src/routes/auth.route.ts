@@ -5,7 +5,6 @@ import {
   refreshToken,
   logout,
   cleanupExpiredTokens,
-  validateSession,
 } from "../controllers/auth.controller.ts";
 
 const authRoutes = async (fastify: FastifyInstance) => {
@@ -15,12 +14,6 @@ const authRoutes = async (fastify: FastifyInstance) => {
       password?: string;
     };
   }>("/login", { preHandler: [signature] }, login);
-
-  fastify.get(
-    "/validate-session",
-    { preHandler: [signature] },
-    validateSession
-  );
 
   fastify.post<{
     Body: {

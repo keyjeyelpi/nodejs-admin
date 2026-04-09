@@ -23,6 +23,8 @@ const sortableColumns: Record<string, AnyColumn> = {
   country: users.country,
   contactnumber: users.contactnumber,
   createdAt: users.createdAt,
+  updatedAt: users.updatedAt,
+  lastLogin: users.lastLogin,
 };
 
 export const fetchAllUsers = async (
