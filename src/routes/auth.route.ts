@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { signature } from "../middleware/signature.middleware.ts";
 import {
   login,
-  refreshToken,
+  token,
   logout,
   cleanupExpiredTokens,
 } from "../controllers/auth.controller.ts";
@@ -17,13 +17,13 @@ const authRoutes = async (fastify: FastifyInstance) => {
 
   fastify.post<{
     Body: {
-      refreshToken?: string;
+      token?: string;
     };
-  }>("/refresh", { preHandler: [signature] }, refreshToken);
+  }>("/refresh", { preHandler: [signature] }, token);
 
   fastify.post<{
     Body: {
-      refreshToken?: string;
+      token?: string;
     };
   }>("/logout", { preHandler: [signature] }, logout);
 

@@ -21,6 +21,7 @@ import {
 const JWT_SECRET = process.env.JWT_SECRET || "";
 const EXPIRATION_IN_MINUTES = 15;
 const EXPIRES_AT = `${EXPIRATION_IN_MINUTES}m`;
+const EXPIRATION_IN_DAYS = 7;
 
 export const login = async (
   req: FastifyRequest<{
@@ -137,7 +138,7 @@ export const login = async (
     const refreshToken = randomUUID();
     const expiresAt = getCurrentUTCTime();
 
-    expiresAt.setUTCDate(expiresAt.getUTCDate() + 1);
+    expiresAt.setUTCDate(expiresAt.getUTCDate() + EXPIRATION_IN_DAYS);
     // 1 day expiry
     await db.insert(userTokens).values({
       token: refreshToken,
@@ -155,10 +156,10 @@ export const login = async (
     reply.send({
       message: "Login successful",
       data: {
-        token,
-        refreshToken,
-        refreshTokenExpiresAt: new Date(Date.now() + EXPIRATION_IN_MINUTES * 60 * 1000), // Already in UTC milliseconds
-        expiresAt,
+        refreshToken: token,
+        token: refreshToken,
+        expiresAt: new Date(Date.now() + EXPIRATION_IN_MINUTES * 60 * 1000), // Already in UTC milliseconds
+        refreshTokenExpiresAt: expiresAt,
         ...(toCamelCase(userResult) || {}),
       },
     });
@@ -171,20 +172,19 @@ export const login = async (
   }
 };
 
-export const refreshToken = async (
-  req: FastifyRequest<{ Body: { refreshToken?: string } }>,
+export const token = async (
+  req: FastifyRequest<{ Body: { token?: string } }>,
   reply: FastifyReply
 ) => {
-
-  console.log("refreshToken accessed");
+  console.log("token accessed");
 
   if (!req.body)
     return reply.status(400).send({ message: "Request body is missing" });
 
-  const { refreshToken: token } = req.body;
+  const { token: refreshToken } = req.body;
 
-  if (!token)
-    return reply.status(400).send({ message: "Refresh token is required" });
+  if (!refreshToken)
+    return reply.status(400).send({ message: "Token is required" });
 
   try {
     const tokenResult = await db
@@ -195,14 +195,14 @@ export const refreshToken = async (
         expiration: userTokens.expiration,
       })
       .from(userTokens)
-      .where(eq(userTokens.token, token))
+      .where(eq(userTokens.token, refreshToken))
       .then((rows) => rows[0]);
 
     if (!tokenResult)
-      return reply.status(401).send({ message: "Invalid refresh token" });
+      return reply.status(401).send({ message: "Invalid token" });
 
     if (getCurrentUTCTime() > new Date(tokenResult.expiration))
-      return reply.status(401).send({ message: "Refresh token has expired" });
+      return reply.status(401).send({ message: "Token has expired" });
 
     const userResult = await db
       .select({ id: users.id, active: users.active })
@@ -218,11 +218,9 @@ export const refreshToken = async (
         message: "User account is inactive. Please contact support.",
       });
 
-    const newAccessToken = jwt.sign(
-      { sub: userResult.id },
-      JWT_SECRET,
-      { expiresIn: EXPIRES_AT }
-    );
+    const newAccessToken = jwt.sign({ sub: userResult.id }, JWT_SECRET, {
+      expiresIn: EXPIRES_AT,
+    });
 
     const newRefreshToken = randomUUID();
 
@@ -232,12 +230,12 @@ export const refreshToken = async (
       .where(eq(userTokens.id, tokenResult.id));
 
     reply.send({
-      message: "Token refreshed successfully",
+      message: "Refresh token refreshed successfully",
       data: {
-        token: encrypt(newAccessToken),
-        refreshToken: newRefreshToken,
-        expiresAt: tokenResult.expiration,
-        refreshTokenExpiresAt: new Date(Date.now() + EXPIRATION_IN_MINUTES * 60 * 1000),
+        refreshToken: encrypt(newAccessToken),
+        token: newRefreshToken,
+        refreshTokenExpiresAt: tokenResult.expiration,
+        expiresAt: new Date(Date.now() + EXPIRATION_IN_MINUTES * 60 * 1000),
       },
     });
   } catch (err) {
@@ -249,7 +247,7 @@ export const refreshToken = async (
 export const logout = async (
   req: FastifyRequest<{
     Body: {
-      refreshToken?: string;
+      token?: string;
     };
   }>,
   reply: FastifyReply
@@ -264,17 +262,17 @@ export const logout = async (
       message: "Request body is missing",
     });
 
-  const { refreshToken: token } = req.body || {};
+  const { token: refreshToken } = req.body || {};
 
-  if (!token) {
-    console.warn("Refresh token is missing in request body");
+  if (!refreshToken) {
+    console.warn("Token is missing in request body");
     return reply.status(400).send({
-      message: "Refresh token is required",
+      message: "Token is required",
     });
   }
 
   try {
-    // Find and delete the refresh token from the database
+    // Find and delete the token from the database
     const tokenResult = await db
       .select({
         id: userTokens.id,
@@ -283,13 +281,13 @@ export const logout = async (
         expiration: userTokens.expiration,
       })
       .from(userTokens)
-      .where(eq(userTokens.token, token))
+      .where(eq(userTokens.token, refreshToken))
       .then((rows) => rows[0]);
 
     if (!tokenResult) {
-      console.warn("Refresh token not found in database for logout:", token);
+      console.warn("Token not found in database for logout:", refreshToken);
       return reply.status(404).send({
-        message: "Refresh token not found",
+        message: "Token not found",
       });
     }
 
@@ -314,18 +312,18 @@ export const logout = async (
   }
 };
 
-// Internal function to clean up expired tokens (no reply sent)
+// Internal function to clean up expired refresh tokens (no reply sent)
 const cleanupExpiredTokensInternal = async (): Promise<void> => {
   console.log("cleanupExpiredTokensInternal accessed");
   try {
     const now = getCurrentUTCTime();
 
-    // Delete all expired tokens
+    // Delete all expired refresh tokens
     await db.delete(userTokens).where(lt(userTokens.expiration, now));
 
-    console.log("Expired refresh tokens cleaned up");
+    console.log("Expired tokens cleaned up");
   } catch (err) {
-    console.error("Error cleaning up expired tokens:", err);
+    console.error("Error cleaning up expired refresh tokens:", err);
   }
 };
 
@@ -335,14 +333,14 @@ export const cleanupExpiredTokens = (
   reply: FastifyReply
 ) => {
   try {
-    // Delete all expired tokens
-    console.log("Expired refresh tokens cleaned up");
+    // Delete all expired refresh tokens
+    console.log("Expired tokens cleaned up");
 
     return reply.send({
-      message: "Expired tokens cleanup completed",
+      message: "Expired refresh tokens cleanup completed",
     });
   } catch (err) {
-    console.error("Error cleaning up expired tokens:", err);
+    console.error("Error cleaning up expired refresh tokens:", err);
     return reply.status(500).send({
       message: "Server error during cleanup",
     });
