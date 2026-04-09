@@ -7,7 +7,7 @@ interface JwtPayload {
   role: string;
 }
 
-export const authenticateJWT = (req: FastifyRequest, reply: FastifyReply) => {
+export const authenticateJWT = async (req: FastifyRequest, reply: FastifyReply) => {
   console.log("[JWTMiddleware] authenticateJWT accessed for path:", req.url);
   const authHeader = req.headers.authorization;
 

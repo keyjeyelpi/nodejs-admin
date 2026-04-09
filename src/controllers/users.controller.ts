@@ -5,6 +5,7 @@ import { toCamelCase } from "../utils/case-converter.util.ts";
 import type { QueryParams } from "../interfaces/general.interface.ts";
 import type { UserBody } from "../interfaces/user.interface.ts";
 import { logUserAction } from "../utils/logger.util.ts";
+import { getCurrentUTCTime } from "../utils/date.util.ts";
 import {
   users,
   roles,
@@ -84,6 +85,7 @@ export const fetchAllUsers = async (
         contactnumber: users.contactnumber,
         active: users.active,
         updatedAt: users.updatedAt,
+        lastLogin: users.lastLogin,
         role: {
           id: roles.id,
           title: roles.title,
@@ -118,7 +120,7 @@ export const fetchAllUsers = async (
     return reply.status(200).send({
       data: toCamelCase(allUsers),
       total: totalCount,
-      pageTotal: Math.ceil(totalCount / limit),
+      pageTotal: Math.ceil(Number(totalCount) / limit),
       page,
       limit,
     });
@@ -373,7 +375,7 @@ export const updateUser = async (
         username,
         contactnumber,
         active,
-        updatedAt: new Date(),
+        updatedAt: getCurrentUTCTime(),
       })
       .where(eq(users.id, id));
 

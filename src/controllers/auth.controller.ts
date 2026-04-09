@@ -7,6 +7,7 @@ import { db } from "../db/index.js";
 import { decrypt } from "../utils/encryption.util.js";
 import { toCamelCase } from "../utils/case-converter.util.ts";
 import { logUserAction } from "../utils/logger.util.ts";
+import { getCurrentUTCTime } from "../utils/date.util.ts";
 import type { TokenPayload } from "../interfaces/auth.interface.ts";
 import {
   permissions,
@@ -109,6 +110,14 @@ export const login = async (
         message: "Password is incorrect",
       });
 
+    // Update last login timestamp
+    await db
+      .update(users)
+      .set({
+        lastLogin: getCurrentUTCTime(),
+      })
+      .where(eq(users.id, userResult.id));
+
     const token = jwt.sign(
       {
         sub: userResult.id,
@@ -124,9 +133,9 @@ export const login = async (
 
     // Generate refresh token
     const refreshToken = randomUUID();
-    const expiresAt = new Date();
+    const expiresAt = getCurrentUTCTime();
 
-    expiresAt.setDate(expiresAt.getDate() + 1);
+    expiresAt.setUTCDate(expiresAt.getUTCDate() + 1);
     // 1 day expiry
     await db.insert(userTokens).values({
       token: refreshToken,
@@ -146,7 +155,7 @@ export const login = async (
       data: {
         token,
         refreshToken,
-        expiresAt: new Date(Date.now() + EXPIRATION_IN_MINUTES * 60 * 1000),
+        expiresAt: new Date(Date.now() + EXPIRATION_IN_MINUTES * 60 * 1000), // Already in UTC milliseconds
         ...(toCamelCase(userResult) || {}),
       },
     });
@@ -282,9 +291,9 @@ export const validateSession = async (
 
     // Generate new refresh token
     const refreshToken = randomUUID();
-    const expiresAt = new Date();
+    const expiresAt = getCurrentUTCTime();
 
-    expiresAt.setDate(expiresAt.getDate() + 1);
+    expiresAt.setUTCDate(expiresAt.getUTCDate() + 1);
     // 1 day expiry
     await db.insert(userTokens).values({
       token: refreshToken,
@@ -364,7 +373,7 @@ export const refreshToken = async (
     }
 
     // Check if token has expired
-    const now = new Date();
+    const now = getCurrentUTCTime();
     const expiresAt = new Date(tokenResult.expiration as unknown as string);
 
     if (now > expiresAt) {
@@ -413,9 +422,9 @@ export const refreshToken = async (
 
     // Optional: Rotate refresh token (generate new one and invalidate old one)
     const newRefreshToken = randomUUID();
-    const newExpiresAt = new Date();
+    const newExpiresAt = getCurrentUTCTime();
 
-    newExpiresAt.setDate(newExpiresAt.getDate() + 1);
+    newExpiresAt.setUTCDate(newExpiresAt.getUTCDate() + 1);
     // 1 day expiry
     // Delete old refresh token and create new one
     await db.delete(userTokens).where(eq(userTokens.id, tokenResult.id));
@@ -517,7 +526,7 @@ export const logout = async (
 // Internal function to clean up expired tokens (no reply sent)
 const cleanupExpiredTokensInternal = async (): Promise<void> => {
   try {
-    const now = new Date();
+    const now = getCurrentUTCTime();
 
     // Delete all expired tokens
     await db.delete(userTokens).where(lt(userTokens.expiration, now));

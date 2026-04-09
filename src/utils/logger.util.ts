@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from "uuid";
-import { tryToCatch } from "try-to-catch";
 import { db } from "../db/index.ts";
 import { logs } from "../db/schema/index.ts";
+import { getCurrentUTCTime } from "./date.util.ts";
 
 export interface LogParams {
   userId: string;
@@ -54,15 +54,17 @@ export const getActionFromFunctionName = (functionName: string): string => {
 };
 
 export const createLog = async ({ userId, action, module }: LogParams) => {
-  const [error] = await tryToCatch(db.insert(logs).values, {
-    id: uuidv4(),
-    userId,
-    action,
-    module: module || "unknown",
-    timestamp: new Date(),
-  });
-
-  if (error) console.error("Failed to create log:", error);
+  try {
+    await (db.insert(logs).values, {
+      id: uuidv4(),
+      userId,
+      action,
+      module: module || "unknown",
+      timestamp: getCurrentUTCTime(),
+    });
+  } catch (error) {
+    console.error("Failed to create log:", error);
+  }
 };
 
 /**

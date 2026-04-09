@@ -42,9 +42,10 @@ export const users = mysqlTable("users", {
   photo: text("photo"),
   active: boolean("active").notNull().default(true),
   createdAt: datetime("created_at")
-    .default(sql`CURRENT_TIMESTAMP`)
+    .default(sql`UTC_TIMESTAMP()`)
     .notNull(),
   updatedAt: datetime("updated_at")
-    .default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`)
+    .default(sql`UTC_TIMESTAMP() ON UPDATE UTC_TIMESTAMP()`)
     .notNull(),
+  lastLogin: datetime("last_login"),
 });

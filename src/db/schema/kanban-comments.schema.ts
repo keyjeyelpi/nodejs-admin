@@ -16,9 +16,9 @@ export const kanbanComments = mysqlTable("kanban_comments", {
     length: 191,
   }),
   createdAt: datetime("created_at")
-    .default(sql`CURRENT_TIMESTAMP`)
+    .default(sql`UTC_TIMESTAMP()`)
     .notNull(),
   updatedAt: datetime("updated_at")
-    .default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`)
+    .default(sql`UTC_TIMESTAMP() ON UPDATE UTC_TIMESTAMP()`)
     .notNull(),
 });

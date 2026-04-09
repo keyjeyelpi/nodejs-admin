@@ -4,6 +4,7 @@ import * as schema from "./schema/index.ts";
 
 const connection = await mysql.createConnection({
   uri: process.env.DATABASE_URL || "mysql://user:password@localhost:3306/db",
+  timezone: "+00:00",
 });
 
 export const db = drizzle(connection, {

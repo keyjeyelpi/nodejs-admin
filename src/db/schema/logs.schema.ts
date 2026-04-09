@@ -15,6 +15,6 @@ export const logs = mysqlTable("logs", {
     length: 191,
   }).notNull(),
   timestamp: datetime("timestamp")
-    .default(sql`CURRENT_TIMESTAMP`)
+    .default(sql`UTC_TIMESTAMP()`)
     .notNull(),
 });
