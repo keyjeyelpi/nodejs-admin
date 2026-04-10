@@ -55,7 +55,8 @@ export const getActionFromFunctionName = (functionName: string): string => {
 
 export const createLog = async ({ userId, action, module }: LogParams) => {
   try {
-    await (db.insert(logs).values, {
+    await (db.insert(logs).values,
+    {
       id: uuidv4(),
       userId,
       action,
