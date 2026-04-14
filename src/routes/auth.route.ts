@@ -5,6 +5,7 @@ import {
   token,
   logout,
   cleanupExpiredTokens,
+  revalidate,
 } from "../controllers/auth.controller.ts";
 
 const authRoutes = async (fastify: FastifyInstance) => {
@@ -28,6 +29,8 @@ const authRoutes = async (fastify: FastifyInstance) => {
   }>("/logout", { preHandler: [signature] }, logout);
 
   fastify.get("/cleanup", { preHandler: [signature] }, cleanupExpiredTokens);
+
+  fastify.get("/revalidate", { preHandler: [signature] }, revalidate);
 };
 
 export default authRoutes;

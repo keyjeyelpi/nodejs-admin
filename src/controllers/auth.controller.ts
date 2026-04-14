@@ -172,6 +172,113 @@ export const login = async (
   }
 };
 
+export const revalidate = async (req: FastifyRequest, reply: FastifyReply) => {
+  console.log("revalidate accessed");
+
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return reply.status(401).send({
+        message: "Authorization header missing or invalid",
+      });
+    }
+
+    const token = authHeader.substring(7); // Remove "Bearer "
+
+    const decoded = jwt.verify(token, JWT_SECRET) as jwt.JwtPayload;
+
+    if (!decoded.sub) {
+      return reply.status(401).send({
+        message: "Invalid token",
+      });
+    }
+
+    const userId = decoded.sub as string;
+
+    const userResult = await db
+      .select({
+        id: users.id,
+        userId: users.id,
+        country: users.country,
+        roleId: users.roleId,
+        lastname: users.lastname,
+        firstname: users.firstname,
+        email: users.email,
+        username: users.username,
+        contactnumber: users.contactnumber,
+        createdAt: users.createdAt,
+        updatedAt: users.updatedAt,
+        active: users.active,
+        settings: {
+          colorPrimary: userSettings.colorPrimary,
+          colorSecondary: userSettings.colorSecondary,
+          darkModePreference: userSettings.darkModePreference,
+        },
+        role: {
+          id: roles.id,
+          title: roles.title,
+          description: roles.description,
+        },
+        permissions: sql`
+        COALESCE(
+          JSON_ARRAYAGG(
+            CASE
+              WHEN ${permissions.key} IS NOT NULL
+              THEN ${permissions.key}
+            END
+          ),
+          JSON_ARRAY()
+        )
+      `,
+      })
+      .from(users)
+      .leftJoin(roles, eq(users.roleId, roles.id))
+      .leftJoin(rolePermissions, eq(rolePermissions.roleId, roles.id))
+      .leftJoin(permissions, eq(rolePermissions.permissionId, permissions.id))
+      .leftJoin(userSettings, eq(users.id, userSettings.userId))
+      .where(eq(users.id, userId))
+      .groupBy(users.id, roles.id)
+      .then((rows) => rows[0]);
+
+    if (!userResult) {
+      return reply.status(401).send({
+        message: "User not found",
+      });
+    }
+
+    if (!userResult.active) {
+      return reply.status(403).send({
+        message: "User account is inactive. Please contact support.",
+      });
+    }
+
+    // Log revalidate action
+    await logUserAction({
+      userId: userResult.id,
+      functionName: "revalidate",
+      req,
+    });
+
+    reply.send({
+      message: "Token is valid",
+      data: {
+        ...(toCamelCase(userResult) || {}),
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    if (err instanceof jwt.JsonWebTokenError) {
+      return reply.status(401).send({
+        message: "Invalid token",
+      });
+    }
+    return reply.status(500).send({
+      message: "Server error",
+      error: err,
+    });
+  }
+};
+
 export const token = async (
   req: FastifyRequest<{ Body: { token?: string } }>,
   reply: FastifyReply

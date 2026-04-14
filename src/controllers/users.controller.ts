@@ -12,6 +12,7 @@ import {
   rolePermissions,
   permissions,
 } from "../db/schema/index.ts";
+import countries, { type Countries, type Country } from "world-countries";
 
 // Mapping for sortable columns
 const sortableColumns: Record<string, AnyColumn> = {
@@ -50,14 +51,14 @@ export const fetchAllUsers = async (
     // Build search condition
     const searchCondition = search
       ? or(
-          eq(users.id, search),
-          like(users.lastname, `%${search}%`),
-          like(users.firstname, `%${search}%`),
-          like(users.email, `%${search}%`),
-          like(users.username, `%${search}%`),
-          like(users.country, `%${search}%`),
-          like(users.contactnumber, `%${search}%`)
-        )
+        eq(users.id, search),
+        like(users.lastname, `%${search}%`),
+        like(users.firstname, `%${search}%`),
+        like(users.email, `%${search}%`),
+        like(users.username, `%${search}%`),
+        like(users.country, `%${search}%`),
+        like(users.contactnumber, `%${search}%`)
+      )
       : undefined;
 
     // Build active filter condition
@@ -477,6 +478,67 @@ export const deleteUser = async (
     console.error(err);
 
     reply.status(500).send({
+      message: "Server error",
+      error: err,
+    });
+  }
+};
+
+export const getUserLocations = async (
+  req: FastifyRequest,
+  reply: FastifyReply
+) => {
+  console.log("getUserLocations accessed");
+
+  try {
+    // Query to group users by country and count them
+    const locationData = await db
+      .select({
+        country: users.country,
+        count: sql<number>`count(*)`,
+      })
+      .from(users)
+      .groupBy(users.country);
+
+    // Create a map for fast country lookups
+    const countryMap: Map<string, Country> = new Map((countries as unknown as Countries).map((c) => [c.cca2, c]));
+
+    // Map to include coordinates
+    const locations = locationData.map((item) => {
+      const country = countryMap.get(item.country);
+
+      if (!country) {
+        // If country not found, use country code as name and 0,0 coords
+        return {
+          name: item.country,
+          count: item.count,
+          lat: 0,
+          lng: 0,
+        };
+      }
+
+      return {
+        name: country.name.common,
+        count: item.count,
+        lat: country.latlng[0],
+        lng: country.latlng[1],
+      };
+    });
+
+    // Log the action
+    await logUserAction({
+      userId: getCurrentUserId(req),
+      functionName: "getUserLocations",
+      req,
+    });
+
+    reply.status(200).send({
+      message: "User locations retrieved successfully",
+      data: locations,
+    });
+  } catch (err) {
+    console.error(err);
+    return reply.status(500).send({
       message: "Server error",
       error: err,
     });

@@ -7,6 +7,7 @@ import {
   fetchAllUsers,
   fetchUserByAccountID,
   updateUser,
+  getUserLocations,
 } from "../controllers/users.controller.ts";
 
 interface QueryParams {
@@ -47,6 +48,12 @@ const usersRoutes = async (fastify: FastifyInstance) => {
       id: string;
     };
   }>("/:id", { preHandler: [authenticateJWT] }, deleteUser);
+
+  fastify.get(
+    "/locations",
+    { preHandler: [authenticateJWT] },
+    getUserLocations
+  );
 };
 
 export default usersRoutes;
