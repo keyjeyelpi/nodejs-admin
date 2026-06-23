@@ -1,7 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import authRoutes from "./auth.route.ts";
 import dashboardRoutes from "./dashboard.route.ts";
-import kanbanRoutes from "./kanban.route.ts";
 import rolesRoutes from "./roles.route.ts";
 import usersRoutes from "./users.route.ts";
 import userSettingsRoutes from "./user-settings.route.ts";
@@ -13,9 +12,6 @@ const routes = async (fastify: FastifyInstance) => {
   });
   fastify.register(dashboardRoutes, {
     prefix: "/dashboard",
-  });
-  fastify.register(kanbanRoutes, {
-    prefix: "/kanban",
   });
   fastify.register(rolesRoutes, {
     prefix: "/roles",
