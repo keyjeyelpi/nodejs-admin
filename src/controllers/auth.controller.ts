@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { FastifyRequest, FastifyReply } from "fastify";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
-import { eq, or, lt, sql } from "drizzle-orm";
+import { eq, or, lt, sql, inArray } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { decrypt, encrypt } from "../utils/encryption.util.js";
 import { toCamelCase } from "../utils/case-converter.util.ts";
@@ -11,12 +11,15 @@ import { getCurrentUTCTime } from "../utils/date.util.ts";
 
 import {
   permissions,
+  positionRoles,
+  positions,
   rolePermissions,
   roles,
   users,
   userSettings,
   userTokens,
 } from "../db/schema/index.ts";
+import { userPositions } from "../db/schema/user-positions.schema.ts";
 
 const JWT_SECRET = process.env.JWT_SECRET || "";
 const EXPIRATION_IN_MINUTES = 15;
@@ -52,7 +55,6 @@ export const login = async (
         id: users.id,
         userId: users.id,
         country: users.country,
-        roleId: users.roleId,
         lastname: users.lastname,
         firstname: users.firstname,
         email: users.email,
@@ -67,30 +69,10 @@ export const login = async (
           colorSecondary: userSettings.colorSecondary,
           darkModePreference: userSettings.darkModePreference,
         },
-        role: {
-          id: roles.id,
-          title: roles.title,
-          description: roles.description,
-        },
-        permissions: sql`
-        COALESCE(
-          JSON_ARRAYAGG(
-            CASE 
-              WHEN ${permissions.key} IS NOT NULL 
-              THEN ${permissions.key}
-            END
-          ),
-          JSON_ARRAY()
-        )
-      `,
       })
       .from(users)
-      .leftJoin(roles, eq(users.roleId, roles.id))
-      .leftJoin(rolePermissions, eq(rolePermissions.roleId, roles.id))
-      .leftJoin(permissions, eq(rolePermissions.permissionId, permissions.id))
       .leftJoin(userSettings, eq(users.id, userSettings.userId))
       .where(or(eq(users.email, username), eq(users.username, username)))
-      .groupBy(users.id, roles.id)
       .then((rows) => rows[0]);
 
     if (!userResult)
@@ -113,40 +95,132 @@ export const login = async (
         message: "Password is incorrect",
       });
 
-    // Update last login timestamp
+    const userPositionRows = await db
+      .select({
+        id: positions.id,
+        name: positions.name,
+        systemGenerated: positions.systemGenerated,
+      })
+      .from(userPositions)
+      .innerJoin(positions, eq(userPositions.positionId, positions.id))
+      .where(eq(userPositions.userId, userResult.id));
+
+    const positionIds = userPositionRows.map((p) => p.id);
+
+    const positionRoleRows =
+      positionIds.length > 0
+        ? await db
+          .select({
+            positionId: positionRoles.positionId,
+            id: roles.id,
+            name: roles.name,
+            systemGenerated: roles.systemGenerated,
+          })
+          .from(positionRoles)
+          .innerJoin(roles, eq(positionRoles.roleId, roles.id))
+          .where(inArray(positionRoles.positionId, positionIds))
+        : [];
+
+    const roleIds = [...new Set(positionRoleRows.map((r) => r.id))];
+
+    const rolePermissionRows =
+      roleIds.length > 0
+        ? await db
+          .select({
+            roleId: rolePermissions.roleId,
+            id: permissions.id,
+            name: permissions.name,
+            key: permissions.key,
+            module: permissions.module,
+            systemGenerated: permissions.systemGenerated,
+          })
+          .from(rolePermissions)
+          .innerJoin(
+            permissions,
+            eq(rolePermissions.permissionId, permissions.id)
+          )
+          .where(inArray(rolePermissions.roleId, roleIds))
+        : [];
+
+    const uniquePermissionsMap = new Map<
+      string,
+      { id: string; name: string; key: string; module: string | null; systemGenerated: boolean }
+    >();
+    rolePermissionRows.forEach((p) => {
+      if (!uniquePermissionsMap.has(p.id)) {
+        uniquePermissionsMap.set(p.id, {
+          id: p.id,
+          name: p.name,
+          key: p.key,
+          module: p.module,
+          systemGenerated: p.systemGenerated,
+        });
+      }
+    });
+
+    const assembledPositions = userPositionRows.map((position) => {
+      const posRoles = positionRoleRows
+        .filter((r) => r.positionId === position.id)
+        .map((role) => {
+          const rolePerms = rolePermissionRows
+            .filter((p) => p.roleId === role.id)
+            .map((p) => ({
+              id: p.id,
+              name: p.name,
+              key: p.key,
+              module: p.module,
+              systemGenerated: p.systemGenerated,
+            }));
+
+          return {
+            id: role.id,
+            name: role.name,
+            systemGenerated: role.systemGenerated,
+            permissions: rolePerms,
+          };
+        });
+
+      return {
+        id: position.id,
+        name: position.name,
+        systemGenerated: position.systemGenerated,
+        roles: posRoles,
+      };
+    });
+
+    const flatRoles = Array.from(
+      new Map(positionRoleRows.map((r) => [r.id, { id: r.id, name: r.name }])).values()
+    );
+    const flatPermissionKeys = Array.from(uniquePermissionsMap.values()).map(
+      (p) => p.key
+    );
+
     await db
       .update(users)
-      .set({
-        lastLogin: getCurrentUTCTime(),
-      })
+      .set({ lastLogin: getCurrentUTCTime() })
       .where(eq(users.id, userResult.id));
 
     const token = jwt.sign(
       {
         sub: userResult.id,
         username: userResult.username,
-        role: userResult.roleId || "user",
-        permissions: userResult.permissions || [],
+        roles: flatRoles.map((r) => r.id),
+        permissions: flatPermissionKeys,
       },
       JWT_SECRET,
-      {
-        expiresIn: EXPIRES_AT,
-      }
+      { expiresIn: EXPIRES_AT }
     );
 
-    // Generate refresh token
     const refreshToken = randomUUID();
     const expiresAt = getCurrentUTCTime();
-
     expiresAt.setUTCDate(expiresAt.getUTCDate() + EXPIRATION_IN_DAYS);
-    // 1 day expiry
+
     await db.insert(userTokens).values({
       token: refreshToken,
       userID: userResult.id,
       expiration: expiresAt,
     } as any);
 
-    // Log successful login
     await logUserAction({
       userId: userResult.id,
       functionName: "login",
@@ -158,9 +232,12 @@ export const login = async (
       data: {
         refreshToken: token,
         token: refreshToken,
-        expiresAt: new Date(Date.now() + EXPIRATION_IN_MINUTES * 60 * 1000), // Already in UTC milliseconds
+        expiresAt: new Date(Date.now() + EXPIRATION_IN_MINUTES * 60 * 1000),
         refreshTokenExpiresAt: expiresAt,
         ...(toCamelCase(userResult) || {}),
+        positions: assembledPositions,
+        roles: flatRoles,
+        permissions: Array.from(uniquePermissionsMap.values()),
       },
     });
   } catch (err) {
@@ -183,8 +260,7 @@ export const revalidate = async (req: FastifyRequest, reply: FastifyReply) => {
       });
     }
 
-    const token = authHeader.substring(7); // Remove "Bearer "
-
+    const token = authHeader.substring(7);
     const decoded = jwt.verify(token, JWT_SECRET) as jwt.JwtPayload;
 
     if (!decoded.sub) {
@@ -200,7 +276,6 @@ export const revalidate = async (req: FastifyRequest, reply: FastifyReply) => {
         id: users.id,
         userId: users.id,
         country: users.country,
-        roleId: users.roleId,
         lastname: users.lastname,
         firstname: users.firstname,
         email: users.email,
@@ -214,30 +289,10 @@ export const revalidate = async (req: FastifyRequest, reply: FastifyReply) => {
           colorSecondary: userSettings.colorSecondary,
           darkModePreference: userSettings.darkModePreference,
         },
-        role: {
-          id: roles.id,
-          title: roles.title,
-          description: roles.description,
-        },
-        permissions: sql`
-        COALESCE(
-          JSON_ARRAYAGG(
-            CASE
-              WHEN ${permissions.key} IS NOT NULL
-              THEN ${permissions.key}
-            END
-          ),
-          JSON_ARRAY()
-        )
-      `,
       })
       .from(users)
-      .leftJoin(roles, eq(users.roleId, roles.id))
-      .leftJoin(rolePermissions, eq(rolePermissions.roleId, roles.id))
-      .leftJoin(permissions, eq(rolePermissions.permissionId, permissions.id))
       .leftJoin(userSettings, eq(users.id, userSettings.userId))
       .where(eq(users.id, userId))
-      .groupBy(users.id, roles.id)
       .then((rows) => rows[0]);
 
     if (!userResult) {
@@ -252,7 +307,103 @@ export const revalidate = async (req: FastifyRequest, reply: FastifyReply) => {
       });
     }
 
-    // Log revalidate action
+    const userPositionRows = await db
+      .select({
+        id: positions.id,
+        name: positions.name,
+        systemGenerated: positions.systemGenerated,
+      })
+      .from(userPositions)
+      .innerJoin(positions, eq(userPositions.positionId, positions.id))
+      .where(eq(userPositions.userId, userResult.id));
+
+    const positionIds = userPositionRows.map((p) => p.id);
+
+    const positionRoleRows =
+      positionIds.length > 0
+        ? await db
+          .select({
+            positionId: positionRoles.positionId,
+            id: roles.id,
+            name: roles.name,
+            systemGenerated: roles.systemGenerated,
+          })
+          .from(positionRoles)
+          .innerJoin(roles, eq(positionRoles.roleId, roles.id))
+          .where(inArray(positionRoles.positionId, positionIds))
+        : [];
+
+    const roleIds = [...new Set(positionRoleRows.map((r) => r.id))];
+
+    const rolePermissionRows =
+      roleIds.length > 0
+        ? await db
+          .select({
+            roleId: rolePermissions.roleId,
+            id: permissions.id,
+            name: permissions.name,
+            key: permissions.key,
+            module: permissions.module,
+            systemGenerated: permissions.systemGenerated,
+          })
+          .from(rolePermissions)
+          .innerJoin(
+            permissions,
+            eq(rolePermissions.permissionId, permissions.id)
+          )
+          .where(inArray(rolePermissions.roleId, roleIds))
+        : [];
+
+    const uniquePermissionsMap = new Map<
+      string,
+      { id: string; name: string; key: string; module: string | null; systemGenerated: boolean }
+    >();
+    rolePermissionRows.forEach((p) => {
+      if (!uniquePermissionsMap.has(p.id)) {
+        uniquePermissionsMap.set(p.id, {
+          id: p.id,
+          name: p.name,
+          key: p.key,
+          module: p.module,
+          systemGenerated: p.systemGenerated,
+        });
+      }
+    });
+
+    const assembledPositions = userPositionRows.map((position) => {
+      const posRoles = positionRoleRows
+        .filter((r) => r.positionId === position.id)
+        .map((role) => {
+          const rolePerms = rolePermissionRows
+            .filter((p) => p.roleId === role.id)
+            .map((p) => ({
+              id: p.id,
+              name: p.name,
+              key: p.key,
+              module: p.module,
+              systemGenerated: p.systemGenerated,
+            }));
+
+          return {
+            id: role.id,
+            name: role.name,
+            systemGenerated: role.systemGenerated,
+            permissions: rolePerms,
+          };
+        });
+
+      return {
+        id: position.id,
+        name: position.name,
+        systemGenerated: position.systemGenerated,
+        roles: posRoles,
+      };
+    });
+
+    const flatRoles = Array.from(
+      new Map(positionRoleRows.map((r) => [r.id, { id: r.id, name: r.name }])).values()
+    );
+
     await logUserAction({
       userId: userResult.id,
       functionName: "revalidate",
@@ -263,6 +414,9 @@ export const revalidate = async (req: FastifyRequest, reply: FastifyReply) => {
       message: "Token is valid",
       data: {
         ...(toCamelCase(userResult) || {}),
+        positions: assembledPositions,
+        roles: flatRoles,
+        permissions: Array.from(uniquePermissionsMap.values()),
       },
     });
   } catch (err) {

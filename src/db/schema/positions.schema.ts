@@ -5,7 +5,7 @@ import {
   boolean,
 } from "drizzle-orm/mysql-core";
 
-export const roles = mysqlTable("roles", {
+export const positions = mysqlTable("positions", {
   id: varchar("id", {
     length: 191,
   }).primaryKey(),
