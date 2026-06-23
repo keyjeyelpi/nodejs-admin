@@ -41,11 +41,12 @@ export const users = mysqlTable("users", {
   }).notNull(),
   photo: text("photo"),
   active: boolean("active").notNull().default(true),
-  createdAt: datetime("created_at")
-    .default(sql`UTC_TIMESTAMP()`)
+  createdAt: datetime("created_at", { mode: "date" })
+    .default(sql`(CURRENT_TIMESTAMP)`)
     .notNull(),
-  updatedAt: datetime("updated_at")
-    .default(sql`UTC_TIMESTAMP() ON UPDATE UTC_TIMESTAMP()`)
+  updatedAt: datetime("updated_at", { mode: "date" })
+    .default(sql`(CURRENT_TIMESTAMP)`)
+    .$onUpdateFn(() => sql`(CURRENT_TIMESTAMP)`)
     .notNull(),
   lastLogin: datetime("last_login"),
 });

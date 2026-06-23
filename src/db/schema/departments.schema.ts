@@ -17,7 +17,7 @@ export const departments = mysqlTable("departments", {
   lead: varchar("lead", {
     length: 191,
   }).notNull(),
-  createdAt: datetime("created_at")
-    .default(sql`UTC_TIMESTAMP()`)
+  createdAt: datetime("created_at", { mode: "date" })
+    .default(sql`(CURRENT_TIMESTAMP)`)
     .notNull(),
 });

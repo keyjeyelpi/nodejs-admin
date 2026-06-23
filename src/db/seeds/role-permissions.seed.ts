@@ -30,13 +30,13 @@ export async function seed() {
   // Define role-permission relationships
   // System Administrator gets all:access permission
   const systemAdminRole = rolesList.find(
-    (r) => r.title === "System Administrator"
+    (r) => r.name === "System Administrator"
   );
 
   const systemAdminPermissions = [findPermission("all:access")];
 
   // Administrator gets all userlink:users permissions
-  const adminRole = rolesList.find((r) => r.title === "Administrator");
+  const adminRole = rolesList.find((r) => r.name === "Administrator");
 
   const adminPermissions = [
     findPermission("userlink:users:add"),
@@ -47,7 +47,7 @@ export async function seed() {
   ];
 
   // Manager gets add, edit, view, list (no delete)
-  const managerRole = rolesList.find((r) => r.title === "Manager");
+  const managerRole = rolesList.find((r) => r.name === "Manager");
 
   const managerPermissions = [
     findPermission("userlink:users:add"),
@@ -57,7 +57,7 @@ export async function seed() {
   ];
 
   // User gets view and list
-  const userRole = rolesList.find((r) => r.title === "User");
+  const userRole = rolesList.find((r) => r.name === "User");
 
   const userPermissions = [
     findPermission("userlink:users:view"),
@@ -65,7 +65,7 @@ export async function seed() {
   ];
 
   // Guest gets only list
-  const guestRole = rolesList.find((r) => r.title === "Guest");
+  const guestRole = rolesList.find((r) => r.name === "Guest");
 
   const guestPermissions = [findPermission("userlink:users:list")];
 

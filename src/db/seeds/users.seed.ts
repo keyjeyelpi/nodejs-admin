@@ -26,7 +26,7 @@ export async function seed() {
 
   // Get System Administrator role for Kim Joseph
   const systemAdminRole = rolesList.find(
-    (r) => r.title === "System Administrator"
+    (r) => r.name === "System Administrator"
   );
 
   if (!systemAdminRole) {
@@ -55,7 +55,7 @@ export async function seed() {
   console.log("Created Kim Joseph Penaloza with System Administrator role");
   // Get other roles for random users (exclude System Administrator)
   const otherRoles = rolesList.filter(
-    (r) => r.title !== "System Administrator"
+    (r) => r.name !== "System Administrator"
   );
 
   // Create 49 additional users

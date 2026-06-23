@@ -11,7 +11,7 @@ export interface LogParams {
 
 /**
  * Extracts the module name from a Fastify request URL
- * e.g., "/auth/login" -> "auth", "/users" -> "users", "/kanban/boards" -> "kanban"
+ * e.g., "/auth/login" -> "auth", "/users" -> "users"
  */
 export const getModuleFromUrl = (url: string): string => {
   // Remove query string if present
