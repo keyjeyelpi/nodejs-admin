@@ -1,9 +1,4 @@
-import {
-  mysqlTable,
-  varchar,
-  text,
-  boolean,
-} from "drizzle-orm/mysql-core";
+import { mysqlTable, varchar, text, boolean } from "drizzle-orm/mysql-core";
 
 export const positions = mysqlTable("positions", {
   id: varchar("id", {
@@ -16,7 +11,4 @@ export const positions = mysqlTable("positions", {
     .notNull(),
   description: text("description").notNull(),
   systemGenerated: boolean("system_generated").notNull().default(false),
-  module: varchar("module", {
-    length: 191,
-  }),
 });

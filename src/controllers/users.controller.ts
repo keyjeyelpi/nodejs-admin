@@ -53,14 +53,14 @@ export const fetchAllUsers = async (
 
     const searchCondition = search
       ? or(
-        eq(users.id, search),
-        like(users.lastname, `%${search}%`),
-        like(users.firstname, `%${search}%`),
-        like(users.email, `%${search}%`),
-        like(users.username, `%${search}%`),
-        like(users.country, `%${search}%`),
-        like(users.contactnumber, `%${search}%`)
-      )
+          eq(users.id, search),
+          like(users.lastname, `%${search}%`),
+          like(users.firstname, `%${search}%`),
+          like(users.email, `%${search}%`),
+          like(users.username, `%${search}%`),
+          like(users.country, `%${search}%`),
+          like(users.contactnumber, `%${search}%`)
+        )
       : undefined;
 
     let activeCondition;
@@ -90,7 +90,6 @@ export const fetchAllUsers = async (
           name: positions.name,
           description: positions.description,
           systemGenerated: positions.systemGenerated,
-          module: positions.module,
         },
       })
       .from(users)
@@ -154,7 +153,6 @@ type PositionEntry = {
   id: string;
   name: string;
   description: string;
-  module: string | null;
 };
 
 type RoleEntry = {
@@ -194,7 +192,6 @@ export const fetchUserByAccountID = async (
         positionId: positions.id,
         positionName: positions.name,
         positionDescription: positions.description,
-        positionModule: positions.module,
         // Role fields
         roleId: roles.id,
         roleName: roles.name,
@@ -214,8 +211,7 @@ export const fetchUserByAccountID = async (
 
     const [base, ...rest] = rows;
 
-    if (!base)
-      return reply.status(404).send({ message: "User not found" });
+    if (!base) return reply.status(404).send({ message: "User not found" });
 
     const allRows = [base, ...rest];
 
@@ -230,7 +226,6 @@ export const fetchUserByAccountID = async (
             id: row.positionId,
             name: row.positionName,
             description: row.positionDescription,
-            module: row.positionModule ?? null,
           });
         }
       }
@@ -558,7 +553,9 @@ export const getUserLocations = async (
       .groupBy(users.country);
 
     // Create a map for fast country lookups
-    const countryMap: Map<string, Country> = new Map((countries as unknown as Countries).map((c) => [c.cca2, c]));
+    const countryMap: Map<string, Country> = new Map(
+      (countries as unknown as Countries).map((c) => [c.cca2, c])
+    );
 
     // Map to include coordinates
     const locations = locationData.map((item) => {
