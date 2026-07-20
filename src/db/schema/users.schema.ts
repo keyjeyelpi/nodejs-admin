@@ -48,5 +48,5 @@ export const users = mysqlTable("users", {
     .default(sql`(CURRENT_TIMESTAMP)`)
     .$onUpdateFn(() => sql`(CURRENT_TIMESTAMP)`)
     .notNull(),
-  lastLogin: datetime("last_login"),
+  lastLogin: datetime("last_login", { mode: "date" }),
 });

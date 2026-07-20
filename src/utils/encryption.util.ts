@@ -1,13 +1,7 @@
-import bcrypt from "bcryptjs";
-import CryptoJS from "crypto-js";
+import { createCryptoClient } from '@keyjeyelpi/encryption';
 
-export const encrypt = (data: string) =>
-  CryptoJS.AES.encrypt(data, process.env.DB_SECRET || "secret").toString();
+const secretKey = "keyjeyelpi";
 
-export const decrypt = (data: string) =>
-  CryptoJS.AES.decrypt(data, process.env.DB_SECRET || "secret").toString(
-    CryptoJS.enc.Utf8
-  );
+export const encryption = createCryptoClient(secretKey);
 
-export const hash = (data?: string) =>
-  bcrypt.hash(data || process.env.DB_SECRET || "default-password", 10);
+export const { encrypt, decrypt, hash, createSignature } = encryption;

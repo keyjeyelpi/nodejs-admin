@@ -195,10 +195,10 @@ export const login = async (
       (p) => p.key
     );
 
-    await db
-      .update(users)
-      .set({ lastLogin: getCurrentUTCTime() })
-      .where(eq(users.id, userResult.id));
+    // await db
+    //   .update(users)
+    //   .set({ lastLogin: getCurrentUTCTime() })
+    //   .where(eq(users.id, userResult.id));
 
     const token = jwt.sign(
       {

@@ -19,12 +19,8 @@ export async function seed() {
   const existingPermissions = await db.select().from(permissions);
 
   if (existingPermissions.length > 0) {
-    console.log("Permissions already exist, skipping...");
-    console.log(
-      "Existing permissions:",
-      existingPermissions.map((p) => p.key)
-    );
-    return;
+    console.log("Permissions already exist, cleaning up...");
+    await db.delete(permissions).execute();
   }
 
   console.log("Creating default permissions...");
@@ -34,6 +30,7 @@ export async function seed() {
       id: uuidv4(),
       key: perm.key,
       name: perm.name,
+      systemGenerated: true,
     }))
   );
 

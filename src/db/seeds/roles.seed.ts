@@ -17,26 +17,31 @@ await db.insert(roles).values([
       id: uuidv4(),
       name: "System Administrator",
       description: "Full system access with all permissions",
+      systemGenerated: true,
     },
     {
       id: uuidv4(),
       name: "Administrator",
       description: "Full system access",
+      systemGenerated: true,
     },
     {
       id: uuidv4(),
       name: "Manager",
       description: "Manage team and projects",
+      systemGenerated: true,
     },
     {
       id: uuidv4(),
       name: "User",
       description: "Standard user access",
+      systemGenerated: true,
     },
     {
       id: uuidv4(),
       name: "Guest",
       description: "Limited guest access",
+      systemGenerated: true,
     },
   ]);
 

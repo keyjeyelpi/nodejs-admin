@@ -8,5 +8,5 @@ export const userTokens = mysqlTable("user_token", {
   token: varchar("token", {
     length: 500,
   }).notNull(),
-  expiration: datetime("expiration").notNull(),
+  expiration: datetime("expiration", { mode: "date" }).notNull(),
 });
