@@ -32,6 +32,5 @@ export const signature = async (req: FastifyRequest, reply: FastifyReply) => {
 
   if (!signature) return errorResponse("Signature is required");
 
-  if (decrypt(signature) !== predefinedSignature)
-    return errorResponse("Invalid signature");
+  if (decrypt(signature) !== predefinedSignature) return errorResponse("Invalid signature");
 };

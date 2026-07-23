@@ -7,8 +7,7 @@ export async function seed() {
 
   const existingRolePermissions = await db.select().from(rolePermissions);
 
-  if (existingRolePermissions.length > 0)
-    await db.delete(rolePermissions).execute();
+  if (existingRolePermissions.length > 0) await db.delete(rolePermissions).execute();
 
   // Get all roles and permissions
   const rolesList = await db.select().from(roles);
@@ -24,14 +23,11 @@ export async function seed() {
 
   console.log("Creating default role permissions...");
   // Helper function to find permission by key
-  const findPermission = (key: string) =>
-    permissionsList.find((p) => p.key === key);
+  const findPermission = (key: string) => permissionsList.find((p) => p.key === key);
 
   // Define role-permission relationships
   // System Administrator gets all:access permission
-  const systemAdminRole = rolesList.find(
-    (r) => r.name === "System Administrator"
-  );
+  const systemAdminRole = rolesList.find((r) => r.name === "System Administrator");
 
   const systemAdminPermissions = [findPermission("all:access")];
 

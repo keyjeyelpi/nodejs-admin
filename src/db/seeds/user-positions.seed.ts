@@ -24,16 +24,12 @@ export async function seed() {
 
   console.log("Creating user-position associations...");
 
-  const kimJoseph = usersList.find(
-    (u) => u.email === "kj.penaloza@gmail.com"
-  );
+  const kimJoseph = usersList.find((u) => u.email === "kj.penaloza@gmail.com");
 
   const assignments: { userId: string; positionId: string }[] = [];
 
   if (kimJoseph) {
-    const techLeadPosition = positionsList.find(
-      (p) => p.name === "Technical Lead"
-    );
+    const techLeadPosition = positionsList.find((p) => p.name === "Technical Lead");
     if (techLeadPosition) {
       assignments.push({
         userId: kimJoseph.id,
@@ -42,18 +38,14 @@ export async function seed() {
     }
   }
 
-  const otherUsers = usersList.filter(
-    (u) => u.email !== "kj.penaloza@gmail.com"
-  );
+  const otherUsers = usersList.filter((u) => u.email !== "kj.penaloza@gmail.com");
   const otherPositions = positionsList;
 
   for (let i = 0; i < otherUsers.length && i < 50; i++) {
     const user = otherUsers[i];
     const position = otherPositions[i % otherPositions.length];
     if (user && position) {
-      const exists = assignments.find(
-        (a) => a.userId === user.id && a.positionId === position.id
-      );
+      const exists = assignments.find((a) => a.userId === user.id && a.positionId === position.id);
       if (!exists) {
         assignments.push({
           userId: user.id,

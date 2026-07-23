@@ -64,7 +64,8 @@ export async function seed() {
       createdBy: creator.id,
       lead: lead.id,
     });
-  } const createdTeams = await db.select().from(teams);
+  }
+  const createdTeams = await db.select().from(teams);
 
   console.log("Created teams:", createdTeams.length);
   createdTeams.forEach((t) => console.log(`  - ${t.name}`));

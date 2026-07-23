@@ -4,8 +4,8 @@ import { signature } from "../middleware/signature.middleware.ts";
 import {
   createUser,
   deleteUser,
-  fetchAllUsers,
-  fetchUserByAccountID,
+  getListUsers,
+  getUserById,
   updateUser,
   getUserLocations,
 } from "../controllers/users.controller.ts";
@@ -18,23 +18,15 @@ interface QueryParams {
 }
 
 const usersRoutes = async (fastify: FastifyInstance) => {
-  fastify.get<{ Querystring: QueryParams }>(
-    "/",
-    { preHandler: [authenticateJWT] },
-    fetchAllUsers
-  );
+  fastify.get<{ Querystring: QueryParams }>("/", { preHandler: [authenticateJWT] }, getListUsers);
 
   fastify.get<{
     Params: {
       id: string;
     };
-  }>("/:id", { preHandler: [authenticateJWT] }, fetchUserByAccountID);
+  }>("/:id", { preHandler: [authenticateJWT] }, getUserById);
 
-  fastify.post<{ Body: any }>(
-    "/",
-    { preHandler: [authenticateJWT, signature] },
-    createUser
-  );
+  fastify.post<{ Body: any }>("/", { preHandler: [authenticateJWT, signature] }, createUser);
 
   fastify.put<{
     Params: {
@@ -49,11 +41,7 @@ const usersRoutes = async (fastify: FastifyInstance) => {
     };
   }>("/:id", { preHandler: [authenticateJWT] }, deleteUser);
 
-  fastify.get(
-    "/locations",
-    { preHandler: [authenticateJWT] },
-    getUserLocations
-  );
+  fastify.get("/locations", { preHandler: [authenticateJWT] }, getUserLocations);
 };
 
 export default usersRoutes;

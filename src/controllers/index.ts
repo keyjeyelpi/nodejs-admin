@@ -18,8 +18,7 @@ export const globalErrorHandler = (
 ): void => {
   console.error(err.message, err.stack);
 
-  const statusCode: number =
-    err.message === "404" ? 404 : err.statusCode || 500;
+  const statusCode: number = err.message === "404" ? 404 : err.statusCode || 500;
 
   const response: ErrorResponse = {
     status: statusCode,

@@ -10,7 +10,7 @@ const PERMISSIONS: Array<{ key: string; name: string }> = [
   { key: "userlink:users:edit", name: "Edit Users" },
   { key: "userlink:users:view", name: "View Users" },
   { key: "userlink:users:list", name: "List Users" },
-  { key: "userlink:users:delete", name: "Delete Users" },
+  { key: "userlink:users:deletePermissions", name: "deletePermissions Users" },
 ];
 
 export async function seed() {
@@ -20,7 +20,7 @@ export async function seed() {
 
   if (existingPermissions.length > 0) {
     console.log("Permissions already exist, cleaning up...");
-    await db.delete(permissions).execute();
+    await db.deletePermissions(permissions).execute();
   }
 
   console.log("Creating default permissions...");
@@ -37,7 +37,7 @@ export async function seed() {
   const permissionsList = await db.select().from(permissions);
 
   console.log(
-    "Created permissions:",
+    "createPermissionsd permissions:",
     permissionsList.map((p) => p.key)
   );
   console.log("Permissions seeding complete!");

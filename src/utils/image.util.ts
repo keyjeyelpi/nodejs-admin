@@ -6,18 +6,12 @@ export const imageToBase64 = (path: string): string => {
   return img.toString("base64");
 };
 
-export const base64ToImage = (
-  base64String: string,
-  outputPath: string
-): void => {
+export const base64ToImage = (base64String: string, outputPath: string): void => {
   const imgBuffer = Buffer.from(base64String, "base64");
   fs.writeFileSync(outputPath, imgBuffer);
 };
 
-export const checkImageSize = (
-  base64String: string,
-  maxSizeInMB: number
-): boolean => {
+export const checkImageSize = (base64String: string, maxSizeInMB: number): boolean => {
   const imgBuffer = Buffer.from(base64String, "base64");
   const sizeInMB = imgBuffer.length / 1024 ** 2;
 

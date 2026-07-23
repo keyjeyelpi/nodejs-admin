@@ -1,4 +1,4 @@
-import { createCryptoClient } from '@keyjeyelpi/encryption';
+import { createCryptoClient } from "@keyjeyelpi/encryption";
 
 const secretKey = "keyjeyelpi";
 

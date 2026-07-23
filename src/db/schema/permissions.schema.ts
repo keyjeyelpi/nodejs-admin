@@ -1,9 +1,4 @@
-import {
-  mysqlTable,
-  varchar,
-  text,
-  boolean,
-} from "drizzle-orm/mysql-core";
+import { mysqlTable, varchar, text, boolean } from "drizzle-orm/mysql-core";
 
 export const permissions = mysqlTable("permissions", {
   id: varchar("id", {

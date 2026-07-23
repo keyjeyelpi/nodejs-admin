@@ -25,9 +25,7 @@ export async function seed() {
   }
 
   // Get System Administrator role for Kim Joseph
-  const systemAdminRole = rolesList.find(
-    (r) => r.name === "System Administrator"
-  );
+  const systemAdminRole = rolesList.find((r) => r.name === "System Administrator");
 
   if (!systemAdminRole) {
     console.error("System Administrator role not found.");
@@ -54,9 +52,7 @@ export async function seed() {
 
   console.log("Created Kim Joseph Penaloza with System Administrator role");
   // Get other roles for random users (exclude System Administrator)
-  const otherRoles = rolesList.filter(
-    (r) => r.name !== "System Administrator"
-  );
+  const otherRoles = rolesList.filter((r) => r.name !== "System Administrator");
 
   // Create 49 additional users
   for (let i = 0; i < 99; i++) {
@@ -67,8 +63,7 @@ export async function seed() {
     const active = i % 2 === 0;
 
     // Pick a random role (from other roles, not System Administrator)
-    const randomRole =
-      otherRoles[Math.floor(Math.random() * otherRoles.length)]!;
+    const randomRole = otherRoles[Math.floor(Math.random() * otherRoles.length)]!;
 
     const password = await bcrypt.hash("password123", 10);
 
@@ -94,9 +89,7 @@ export async function seed() {
     });
   }
 
-  console.log(
-    "Users seeding complete! Created 50 users (1 Kim Joseph Penaloza + 49 random)"
-  );
+  console.log("Users seeding complete! Created 50 users (1 Kim Joseph Penaloza + 49 random)");
   // Count active vs inactive users
 
   const allUsers = await db

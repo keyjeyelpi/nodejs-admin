@@ -7,10 +7,7 @@ interface JwtPayload {
   role: string;
 }
 
-export const authenticateJWT = async (
-  req: FastifyRequest,
-  reply: FastifyReply
-) => {
+export const authenticateJWT = async (req: FastifyRequest, reply: FastifyReply) => {
   console.log("[JWTMiddleware] authenticateJWT accessed for path:", req.url);
   const authHeader = req.headers.authorization;
 
@@ -42,10 +39,7 @@ export const authenticateJWT = async (
       });
     }
 
-    (req as any).user = jwt.verify(
-      token as string,
-      jwtSecret as string
-    ) as unknown as JwtPayload;
+    (req as any).user = jwt.verify(token as string, jwtSecret as string) as unknown as JwtPayload;
   } catch (err) {
     if (err instanceof jwt.TokenExpiredError) {
       console.warn("JWT token has expired:", err);

@@ -6,8 +6,7 @@ export async function seed() {
 
   const existingPositionRoles = await db.select().from(positionRoles);
 
-  if (existingPositionRoles.length > 0)
-    await db.delete(positionRoles).execute();
+  if (existingPositionRoles.length > 0) await db.delete(positionRoles).execute();
 
   const positionsList = await db.select().from(positions);
   const rolesList = await db.select().from(roles);

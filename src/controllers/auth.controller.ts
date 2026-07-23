@@ -85,10 +85,7 @@ export const login = async (
         message: "User account is inactive. Please contact support.",
       });
 
-    const isMatch = await bcrypt.compare(
-      decrypt(password),
-      userResult.password || ""
-    );
+    const isMatch = await bcrypt.compare(decrypt(password), userResult.password || "");
 
     if (!isMatch)
       return reply.status(401).send({
@@ -110,15 +107,15 @@ export const login = async (
     const positionRoleRows =
       positionIds.length > 0
         ? await db
-          .select({
-            positionId: positionRoles.positionId,
-            id: roles.id,
-            name: roles.name,
-            systemGenerated: roles.systemGenerated,
-          })
-          .from(positionRoles)
-          .innerJoin(roles, eq(positionRoles.roleId, roles.id))
-          .where(inArray(positionRoles.positionId, positionIds))
+            .select({
+              positionId: positionRoles.positionId,
+              id: roles.id,
+              name: roles.name,
+              systemGenerated: roles.systemGenerated,
+            })
+            .from(positionRoles)
+            .innerJoin(roles, eq(positionRoles.roleId, roles.id))
+            .where(inArray(positionRoles.positionId, positionIds))
         : [];
 
     const roleIds = [...new Set(positionRoleRows.map((r) => r.id))];
@@ -126,20 +123,17 @@ export const login = async (
     const rolePermissionRows =
       roleIds.length > 0
         ? await db
-          .select({
-            roleId: rolePermissions.roleId,
-            id: permissions.id,
-            name: permissions.name,
-            key: permissions.key,
-            module: permissions.module,
-            systemGenerated: permissions.systemGenerated,
-          })
-          .from(rolePermissions)
-          .innerJoin(
-            permissions,
-            eq(rolePermissions.permissionId, permissions.id)
-          )
-          .where(inArray(rolePermissions.roleId, roleIds))
+            .select({
+              roleId: rolePermissions.roleId,
+              id: permissions.id,
+              name: permissions.name,
+              key: permissions.key,
+              module: permissions.module,
+              systemGenerated: permissions.systemGenerated,
+            })
+            .from(rolePermissions)
+            .innerJoin(permissions, eq(rolePermissions.permissionId, permissions.id))
+            .where(inArray(rolePermissions.roleId, roleIds))
         : [];
 
     const uniquePermissionsMap = new Map<
@@ -191,9 +185,7 @@ export const login = async (
     const flatRoles = Array.from(
       new Map(positionRoleRows.map((r) => [r.id, { id: r.id, name: r.name }])).values()
     );
-    const flatPermissionKeys = Array.from(uniquePermissionsMap.values()).map(
-      (p) => p.key
-    );
+    const flatPermissionKeys = Array.from(uniquePermissionsMap.values()).map((p) => p.key);
 
     // await db
     //   .update(users)
@@ -322,15 +314,15 @@ export const revalidate = async (req: FastifyRequest, reply: FastifyReply) => {
     const positionRoleRows =
       positionIds.length > 0
         ? await db
-          .select({
-            positionId: positionRoles.positionId,
-            id: roles.id,
-            name: roles.name,
-            systemGenerated: roles.systemGenerated,
-          })
-          .from(positionRoles)
-          .innerJoin(roles, eq(positionRoles.roleId, roles.id))
-          .where(inArray(positionRoles.positionId, positionIds))
+            .select({
+              positionId: positionRoles.positionId,
+              id: roles.id,
+              name: roles.name,
+              systemGenerated: roles.systemGenerated,
+            })
+            .from(positionRoles)
+            .innerJoin(roles, eq(positionRoles.roleId, roles.id))
+            .where(inArray(positionRoles.positionId, positionIds))
         : [];
 
     const roleIds = [...new Set(positionRoleRows.map((r) => r.id))];
@@ -338,20 +330,17 @@ export const revalidate = async (req: FastifyRequest, reply: FastifyReply) => {
     const rolePermissionRows =
       roleIds.length > 0
         ? await db
-          .select({
-            roleId: rolePermissions.roleId,
-            id: permissions.id,
-            name: permissions.name,
-            key: permissions.key,
-            module: permissions.module,
-            systemGenerated: permissions.systemGenerated,
-          })
-          .from(rolePermissions)
-          .innerJoin(
-            permissions,
-            eq(rolePermissions.permissionId, permissions.id)
-          )
-          .where(inArray(rolePermissions.roleId, roleIds))
+            .select({
+              roleId: rolePermissions.roleId,
+              id: permissions.id,
+              name: permissions.name,
+              key: permissions.key,
+              module: permissions.module,
+              systemGenerated: permissions.systemGenerated,
+            })
+            .from(rolePermissions)
+            .innerJoin(permissions, eq(rolePermissions.permissionId, permissions.id))
+            .where(inArray(rolePermissions.roleId, roleIds))
         : [];
 
     const uniquePermissionsMap = new Map<
@@ -439,13 +428,11 @@ export const token = async (
 ) => {
   console.log("token accessed");
 
-  if (!req.body)
-    return reply.status(400).send({ message: "Request body is missing" });
+  if (!req.body) return reply.status(400).send({ message: "Request body is missing" });
 
   const { token: refreshToken } = req.body;
 
-  if (!refreshToken)
-    return reply.status(400).send({ message: "Token is required" });
+  if (!refreshToken) return reply.status(400).send({ message: "Token is required" });
 
   try {
     const tokenResult = await db
@@ -459,8 +446,7 @@ export const token = async (
       .where(eq(userTokens.token, refreshToken))
       .then((rows) => rows[0]);
 
-    if (!tokenResult)
-      return reply.status(401).send({ message: "Invalid token" });
+    if (!tokenResult) return reply.status(401).send({ message: "Invalid token" });
 
     if (getCurrentUTCTime() > new Date(tokenResult.expiration))
       return reply.status(401).send({ message: "Token has expired" });
@@ -471,8 +457,7 @@ export const token = async (
       .where(eq(users.id, tokenResult.userID))
       .then((rows) => rows[0]);
 
-    if (!userResult)
-      return reply.status(401).send({ message: "Invalid refresh token" });
+    if (!userResult) return reply.status(401).send({ message: "Invalid refresh token" });
 
     if (!userResult.active)
       return reply.status(403).send({
@@ -589,10 +574,7 @@ const cleanupExpiredTokensInternal = async (): Promise<void> => {
 };
 
 // Exported function for manual cleanup via API endpoint
-export const cleanupExpiredTokens = (
-  req: FastifyRequest,
-  reply: FastifyReply
-) => {
+export const cleanupExpiredTokens = (req: FastifyRequest, reply: FastifyReply) => {
   try {
     // Delete all expired refresh tokens
     console.log("Expired tokens cleaned up");

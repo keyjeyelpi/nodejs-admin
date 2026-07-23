@@ -3,6 +3,7 @@ import authRoutes from "./auth.route.ts";
 import dashboardRoutes from "./dashboard.route.ts";
 import rolesRoutes from "./roles.route.ts";
 import positionsRoutes from "./positions.route.ts";
+import permissionsRoutes from "./permissions.route.ts";
 import usersRoutes from "./users.route.ts";
 import userSettingsRoutes from "./user-settings.route.ts";
 import { error404, globalErrorHandler } from "../controllers/index.ts";
@@ -25,6 +26,9 @@ const routes = async (fastify: FastifyInstance) => {
   });
   fastify.register(positionsRoutes, {
     prefix: "/positions",
+  });
+  fastify.register(permissionsRoutes, {
+    prefix: "/permissions",
   });
 
   // 404 handler

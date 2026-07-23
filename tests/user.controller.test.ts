@@ -2,8 +2,8 @@ import { db } from "../src/db/index.js";
 import {
   createUser,
   deleteUser,
-  fetchAllUsers,
-  fetchUserByAccountID,
+  getListUsers,
+  getUserById,
   updateUser,
 } from "../src/controllers/users.controller.ts";
 
@@ -50,7 +50,7 @@ describe("user.controller", () => {
     jest.clearAllMocks();
   });
 
-  describe("fetchAllUsers", () => {
+  describe("getListUsers", () => {
     it("returns paginated users for explicit query", async () => {
       const offset = jest.fn().mockResolvedValueOnce([
         {
@@ -76,7 +76,7 @@ describe("user.controller", () => {
       };
       const reply = createReply();
 
-      await fetchAllUsers(req, reply);
+      await getListUsers(req, reply);
 
       expect(reply.statusCode).toBe(200);
       expect(reply.payload.data.total).toBe(1);
@@ -100,7 +100,7 @@ describe("user.controller", () => {
       const req: any = { query: {} };
       const reply = createReply();
 
-      await fetchAllUsers(req, reply);
+      await getListUsers(req, reply);
 
       expect(reply.statusCode).toBe(200);
       expect(reply.payload.data.total).toBe(0);
@@ -117,14 +117,14 @@ describe("user.controller", () => {
       const req: any = { query: {} };
       const reply = createReply();
 
-      await fetchAllUsers(req, reply);
+      await getListUsers(req, reply);
 
       expect(reply.statusCode).toBe(500);
       expect(reply.payload.message).toBe("Server error");
     });
   });
 
-  describe("fetchUserByAccountID", () => {
+  describe("getUserById", () => {
     it("returns 404 when user not found", async () => {
       const where = jest.fn().mockResolvedValue([]);
       const leftJoin = jest.fn().mockReturnValue({ where });
@@ -134,16 +134,14 @@ describe("user.controller", () => {
       const req: any = { params: { id: "missing-id" } };
       const reply = createReply();
 
-      await fetchUserByAccountID(req, reply);
+      await getUserById(req, reply);
 
       expect(reply.statusCode).toBe(404);
       expect(reply.payload.message).toBe("User not found");
     });
 
     it("returns 200 when user exists", async () => {
-      const where = jest
-        .fn()
-        .mockResolvedValue([{ id: "u1", firstname: "John" }]);
+      const where = jest.fn().mockResolvedValue([{ id: "u1", firstname: "John" }]);
       const leftJoin = jest.fn().mockReturnValue({ where });
       const from = jest.fn().mockReturnValue({ leftJoin });
       (db.select as jest.Mock).mockReturnValue({ from });
@@ -151,7 +149,7 @@ describe("user.controller", () => {
       const req: any = { params: { id: "u1" } };
       const reply = createReply();
 
-      await fetchUserByAccountID(req, reply);
+      await getUserById(req, reply);
 
       expect(reply.statusCode).toBe(200);
       expect(reply.payload.message).toBe("Get user with ID u1");
@@ -167,7 +165,7 @@ describe("user.controller", () => {
       const req: any = { params: { id: "u1" } };
       const reply = createReply();
 
-      await fetchUserByAccountID(req, reply);
+      await getUserById(req, reply);
 
       expect(reply.statusCode).toBe(500);
       expect(reply.payload.message).toBe("Server error");
@@ -273,9 +271,7 @@ describe("user.controller", () => {
     });
 
     it("returns 404 for ER_ROW_IS_REFERENCED_2 error", async () => {
-      const where = jest
-        .fn()
-        .mockRejectedValue({ code: "ER_ROW_IS_REFERENCED_2" });
+      const where = jest.fn().mockRejectedValue({ code: "ER_ROW_IS_REFERENCED_2" });
       const set = jest.fn().mockReturnValue({ where });
       (db.update as jest.Mock).mockReturnValue({ set });
 

@@ -73,16 +73,11 @@ export const updateUserSettings = async (
 
     if (!isUndefined(colorPrimary)) updateData.colorPrimary = colorPrimary;
 
-    if (!isUndefined(colorSecondary))
-      updateData.colorSecondary = colorSecondary;
+    if (!isUndefined(colorSecondary)) updateData.colorSecondary = colorSecondary;
 
-    if (!isUndefined(darkModePreference))
-      updateData.darkModePreference = darkModePreference;
+    if (!isUndefined(darkModePreference)) updateData.darkModePreference = darkModePreference;
 
-    await db
-      .update(userSettings)
-      .set(updateData)
-      .where(eq(userSettings.userId, user_id));
+    await db.update(userSettings).set(updateData).where(eq(userSettings.userId, user_id));
 
     const updatedSettings = await db
       .select()

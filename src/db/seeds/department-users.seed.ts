@@ -16,7 +16,9 @@ export async function seed() {
   const usersList = await db.select().from(users);
 
   if (!departmentsList.length || !usersList.length) {
-    console.error("No departments or users found. Please run departments.seed.ts and users.seed.ts first.");
+    console.error(
+      "No departments or users found. Please run departments.seed.ts and users.seed.ts first."
+    );
     process.exit(1);
   }
 

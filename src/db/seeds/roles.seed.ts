@@ -12,7 +12,7 @@ export async function seed() {
 
   console.log("Creating default roles...");
 
-await db.insert(roles).values([
+  await db.insert(roles).values([
     {
       id: uuidv4(),
       name: "System Administrator",
@@ -48,7 +48,7 @@ await db.insert(roles).values([
   const rolesList = await db.select().from(roles);
 
   console.log(
-    "Created roles:",
+    "createRolesd roles:",
     rolesList.map((r) => r.name)
   );
   console.log("Roles seeding complete!");

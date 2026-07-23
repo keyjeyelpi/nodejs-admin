@@ -1,10 +1,5 @@
 import { sql } from "drizzle-orm";
-import {
-  mysqlTable,
-  varchar,
-  text,
-  datetime,
-} from "drizzle-orm/mysql-core";
+import { mysqlTable, varchar, text, datetime } from "drizzle-orm/mysql-core";
 
 export const teams = mysqlTable("teams", {
   id: varchar("id", {

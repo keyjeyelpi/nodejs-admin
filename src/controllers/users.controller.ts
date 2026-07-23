@@ -31,7 +31,7 @@ const sortableColumns: Record<string, AnyColumn> = {
   lastLogin: users.lastLogin,
 };
 
-export const fetchAllUsers = async (
+export const getListUsers = async (
   req: FastifyRequest<{ Querystring: QueryParams }>,
   reply: FastifyReply
 ) => {
@@ -40,14 +40,11 @@ export const fetchAllUsers = async (
     const limit = parseInt(req.query.limit || "12");
     const search = (req.query.search as string) || "";
 
-    const active = !!req.query.status
-      ? parseInt(req.query.status as string)
-      : 0;
+    const active = !!req.query.status ? parseInt(req.query.status as string) : 0;
 
     const sortOrder = (req.query.sortOrder as string) || "asc";
 
-    const sortByColumn =
-      sortableColumns[req.query.sortBy as string] || users.lastname;
+    const sortByColumn = sortableColumns[req.query.sortBy as string] || users.lastname;
 
     const skip = (page - 1) * limit;
 
@@ -125,7 +122,7 @@ export const fetchAllUsers = async (
 
     await logUserAction({
       userId: getCurrentUserId(req),
-      functionName: "fetchAllUsers",
+      functionName: "getListUsers",
       req,
     });
 
@@ -162,7 +159,7 @@ type RoleEntry = {
   module: string | null;
 };
 
-export const fetchUserByAccountID = async (
+export const getUserById = async (
   req: FastifyRequest<{
     Params: {
       id: string;
@@ -170,7 +167,7 @@ export const fetchUserByAccountID = async (
   }>,
   reply: FastifyReply
 ) => {
-  console.log("fetchUserByAccountID accessed");
+  console.log("getUserById accessed");
 
   const { id } = req.params;
 
@@ -264,7 +261,7 @@ export const fetchUserByAccountID = async (
 
     await logUserAction({
       userId: getCurrentUserId(req),
-      functionName: "fetchUserByAccountID",
+      functionName: "getUserById",
       req,
     });
 
@@ -283,10 +280,7 @@ export const fetchUserByAccountID = async (
   }
 };
 
-export const createUser = async (
-  req: FastifyRequest<{ Body: UserBody }>,
-  reply: FastifyReply
-) => {
+export const createUser = async (req: FastifyRequest<{ Body: UserBody }>, reply: FastifyReply) => {
   console.log("createUser accessed");
 
   const {
@@ -409,10 +403,7 @@ export const updateUser = async (
 
   try {
     // Check if user exists
-    const [existingUser] = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, id));
+    const [existingUser] = await db.select().from(users).where(eq(users.id, id));
 
     if (!existingUser)
       return reply.status(404).send({
@@ -536,10 +527,7 @@ export const deleteUser = async (
   }
 };
 
-export const getUserLocations = async (
-  req: FastifyRequest,
-  reply: FastifyReply
-) => {
+export const getUserLocations = async (req: FastifyRequest, reply: FastifyReply) => {
   console.log("getUserLocations accessed");
 
   try {

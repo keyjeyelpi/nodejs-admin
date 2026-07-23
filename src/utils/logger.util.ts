@@ -34,7 +34,7 @@ export const getActionFromFunctionName = (functionName: string): string => {
     "fetch",
     "get",
     "load",
-    "fetchAll",
+    "getList",
     "fetchBy",
     "create",
     "add",
