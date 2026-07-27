@@ -6,9 +6,17 @@ import {
   logout,
   cleanupExpiredTokens,
   revalidate,
+  forceLogin,
 } from "../controllers/auth.controller.ts";
 
 const authRoutes = async (fastify: FastifyInstance) => {
+  fastify.post<{
+    Body: {
+      username?: string;
+      password?: string;
+    };
+  }>("/force-login", { preHandler: [signature] }, forceLogin);
+
   fastify.post<{
     Body: {
       username?: string;
