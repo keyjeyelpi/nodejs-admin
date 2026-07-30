@@ -8,9 +8,6 @@ export const users = mysqlTable("users", {
   country: varchar("country", {
     length: 191,
   }).notNull(),
-  roleId: varchar("role_id", {
-    length: 191,
-  }).notNull(),
   lastname: varchar("lastname", {
     length: 191,
   }).notNull(),

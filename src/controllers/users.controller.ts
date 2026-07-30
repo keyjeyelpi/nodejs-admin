@@ -288,7 +288,7 @@ export const createUser = async (req: FastifyRequest<{ Body: UserBody }>, reply:
     username,
     password,
     country,
-    role: { id: roleId },
+    positions: positionIds,
     lastname,
     firstname,
     contactnumber,
@@ -301,7 +301,8 @@ export const createUser = async (req: FastifyRequest<{ Body: UserBody }>, reply:
       !username ||
       !password ||
       !country ||
-      !roleId ||
+      !positionIds ||
+      positionIds.length === 0 ||
       !lastname ||
       !firstname ||
       !contactnumber
@@ -321,18 +322,29 @@ export const createUser = async (req: FastifyRequest<{ Body: UserBody }>, reply:
         message: "User already exists",
       });
 
+    const userId = crypto.randomUUID();
+
     await db.insert(users).values({
-      id: crypto.randomUUID(),
+      id: userId,
       email,
       username,
       password,
       country,
-      roleId,
       lastname,
       firstname,
       contactnumber,
       active: active ?? true,
     });
+
+    // Insert user-position associations
+    if (positionIds.length > 0) {
+      await db.insert(userPositions).values(
+        positionIds.map((positionId) => ({
+          userId,
+          positionId,
+        }))
+      );
+    }
 
     // Fetch the created user
     const [newUser] = await db
@@ -340,7 +352,6 @@ export const createUser = async (req: FastifyRequest<{ Body: UserBody }>, reply:
         id: users.id,
         userId: users.id,
         country: users.country,
-        roleId: users.roleId,
         lastname: users.lastname,
         firstname: users.firstname,
         email: users.email,
@@ -387,7 +398,7 @@ export const updateUser = async (
   const { id } = req.params;
   const {
     country,
-    role: { id: roleId },
+    positions: positionIds,
     lastname,
     firstname,
     email,
@@ -414,7 +425,6 @@ export const updateUser = async (
       .update(users)
       .set({
         country,
-        roleId,
         lastname,
         firstname,
         email,
@@ -425,12 +435,25 @@ export const updateUser = async (
       })
       .where(eq(users.id, id));
 
+    // Update user-position associations: delete existing, insert new
+    if (positionIds !== undefined) {
+      await db.delete(userPositions).where(eq(userPositions.userId, id));
+
+      if (positionIds.length > 0) {
+        await db.insert(userPositions).values(
+          positionIds.map((positionId) => ({
+            userId: id,
+            positionId,
+          }))
+        );
+      }
+    }
+
     const [updatedUser] = await db
       .select({
         id: users.id,
         userId: users.id,
         country: users.country,
-        roleId: users.roleId,
         lastname: users.lastname,
         firstname: users.firstname,
         email: users.email,
@@ -505,6 +528,11 @@ export const deleteUser = async (
         active: newActiveStatus,
       })
       .where(eq(users.id, id));
+
+    // Purge user-position associations when deactivating
+    if (!newActiveStatus) {
+      await db.delete(userPositions).where(eq(userPositions.userId, id));
+    }
 
     // Log user delete (toggle active status)
     await logUserAction({

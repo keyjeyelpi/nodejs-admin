@@ -7,8 +7,6 @@ export interface UserBody {
   username: string;
   contactnumber: string;
   active: boolean;
-  role: {
-    id: string;
-  };
+  positions: string[];
   password?: string;
 }

@@ -2,16 +2,16 @@ import bcrypt from "bcryptjs";
 import { v4 as uuidv4 } from "uuid";
 import { faker } from "@faker-js/faker";
 import { db } from "../index.ts";
-import { users, roles } from "../schema/index.ts";
+import { users, positions, userPositions } from "../schema/index.ts";
 
 export async function seed() {
   console.log("Seeding users...");
-  // Check if roles exist
 
-  const rolesList = await db.select().from(roles);
+  // Check if positions exist
+  const positionsList = await db.select().from(positions);
 
-  if (!rolesList.length) {
-    console.error("No roles found. Please run roles.seed.ts first.");
+  if (!positionsList.length) {
+    console.error("No positions found. Please run positions.seed.ts first.");
     process.exit(1);
   }
 
@@ -24,23 +24,22 @@ export async function seed() {
     return;
   }
 
-  // Get System Administrator role for Kim Joseph
-  const systemAdminRole = rolesList.find((r) => r.name === "System Administrator");
+  // Get System Administrator position for Kim Joseph
+  const systemAdminPosition = positionsList.find((p) => p.name === "System Administrator");
 
-  if (!systemAdminRole) {
-    console.error("System Administrator role not found.");
+  if (!systemAdminPosition) {
+    console.error("System Administrator position not found.");
     process.exit(1);
   }
 
-  console.log("Using System Administrator role for Kim Joseph");
-  // Create Kim Joseph Penaloza as the first user with System Administrator role
+  console.log("Using System Administrator position for Kim Joseph");
+  // Create Kim Joseph Penaloza as the first user with System Administrator position
   const kimId = uuidv4();
   const hashedPassword = await bcrypt.hash("keyjeyelpi", 10);
 
   await db.insert(users).values({
     id: kimId,
     country: "PH",
-    roleId: systemAdminRole.id,
     lastname: "Penaloza",
     firstname: "Kim Joseph",
     email: "kj.penaloza@gmail.com",
@@ -50,11 +49,18 @@ export async function seed() {
     active: true,
   });
 
-  console.log("Created Kim Joseph Penaloza with System Administrator role");
-  // Get other roles for random users (exclude System Administrator)
-  const otherRoles = rolesList.filter((r) => r.name !== "System Administrator");
+  // Assign System Administrator position to Kim Joseph
+  await db.insert(userPositions).values({
+    userId: kimId,
+    positionId: systemAdminPosition.id,
+  });
 
-  // Create 49 additional users
+  console.log("Created Kim Joseph Penaloza with System Administrator position");
+
+  // Get other positions for random users (exclude System Administrator)
+  const otherPositions = positionsList.filter((p) => p.name !== "System Administrator");
+
+  // Create 99 additional users
   for (let i = 0; i < 99; i++) {
     const userId = uuidv4();
     const firstName = faker.person.firstName();
@@ -62,15 +68,11 @@ export async function seed() {
     const country = faker.location.countryCode();
     const active = i % 2 === 0;
 
-    // Pick a random role (from other roles, not System Administrator)
-    const randomRole = otherRoles[Math.floor(Math.random() * otherRoles.length)]!;
-
     const password = await bcrypt.hash("password123", 10);
 
     await db.insert(users).values({
       id: userId,
       country,
-      roleId: randomRole.id,
       lastname: lastName!,
       firstname: firstName!,
       email: faker.internet.email({
@@ -87,9 +89,16 @@ export async function seed() {
       }),
       active,
     });
+
+    // Assign a random position to the user
+    const randomPosition = otherPositions[Math.floor(Math.random() * otherPositions.length)]!;
+    await db.insert(userPositions).values({
+      userId,
+      positionId: randomPosition.id,
+    });
   }
 
-  console.log("Users seeding complete! Created 50 users (1 Kim Joseph Penaloza + 49 random)");
+  console.log("Users seeding complete! Created 100 users (1 Kim Joseph Penaloza + 99 random)");
   // Count active vs inactive users
 
   const allUsers = await db
