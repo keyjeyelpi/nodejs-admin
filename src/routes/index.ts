@@ -1,12 +1,12 @@
 import type { FastifyInstance } from "fastify";
-import authRoutes from "./auth.route.ts";
-import dashboardRoutes from "./dashboard.route.ts";
-import rolesRoutes from "./roles.route.ts";
-import positionsRoutes from "./positions.route.ts";
-import permissionsRoutes from "./permissions.route.ts";
-import usersRoutes from "./users.route.ts";
-import userSettingsRoutes from "./user-settings.route.ts";
-import { error404, globalErrorHandler } from "../controllers/index.ts";
+import authRoutes from "@/routes/auth.route.ts";
+import dashboardRoutes from "@/routes/dashboard.route.ts";
+import rolesRoutes from "@/routes/roles.route.ts";
+import positionsRoutes from "@/routes/positions.route.ts";
+import permissionsRoutes from "@/routes/permissions.route.ts";
+import usersRoutes from "@/routes/users.route.ts";
+import userSettingsRoutes from "@/routes/user-settings.route.ts";
+import { error404, globalErrorHandler } from "@/controllers/index.ts";
 
 const routes = async (fastify: FastifyInstance) => {
   fastify.register(authRoutes, {

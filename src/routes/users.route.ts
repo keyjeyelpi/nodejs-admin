@@ -1,14 +1,12 @@
 import type { FastifyInstance } from "fastify";
-import { authenticateJWT } from "../middleware/jwt.middleware.ts";
-import { signature } from "../middleware/signature.middleware.ts";
-import {
-  createUser,
-  deleteUser,
-  getListUsers,
-  getUserById,
-  updateUser,
-  getUserLocations,
-} from "../controllers/users.controller.ts";
+import { authenticateJWT } from "@/middleware/jwt.middleware.ts";
+import { signature } from "@/middleware/signature.middleware.ts";
+import { getListUsers } from "@/controllers/users/list.users.ts";
+import { getUserById } from "@/controllers/users/id.users.ts";
+import { createUser } from "@/controllers/users/create.users.ts";
+import { updateUser } from "@/controllers/users/update.users.ts";
+import { deleteUser } from "@/controllers/users/delete.users.ts";
+import { getUserLocations } from "@/controllers/users/locations.users.ts";
 
 interface QueryParams {
   page?: string;

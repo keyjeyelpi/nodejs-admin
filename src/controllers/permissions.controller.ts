@@ -1,8 +1,8 @@
 import type { FastifyRequest, FastifyReply } from "fastify";
 import { eq, sql } from "drizzle-orm";
-import { db } from "../db/index.ts";
-import { permissions, rolePermissions } from "../db/schema/index.ts";
-import { logUserAction } from "../utils/logger.util.ts";
+import { db } from "@/db/index.ts";
+import { permissions, rolePermissions } from "@/db/schema/index.ts";
+import { logUserAction } from "@/utils/logger.util.ts";
 
 const getCurrentUserId = (req: FastifyRequest): string => {
   return (req as any).user?.sub || "unknown";

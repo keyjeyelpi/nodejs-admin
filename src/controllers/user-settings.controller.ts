@@ -1,8 +1,8 @@
 import type { FastifyRequest, FastifyReply } from "fastify";
 import { eq } from "drizzle-orm";
-import { db } from "../db/index.js";
-import { userSettings } from "../db/schema/index.ts";
-import { logUserAction } from "../utils/logger.util.ts";
+import { db } from "@/db/index.js";
+import { userSettings } from "@/db/schema/index.ts";
+import { logUserAction } from "@/utils/logger.util.ts";
 
 const isUndefined = (a): a is undefined => typeof a === "undefined";
 

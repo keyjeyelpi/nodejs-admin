@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { signature } from "../middleware/signature.middleware.ts";
+import { signature } from "@/middleware/signature.middleware.ts";
 import {
   login,
   token,
@@ -7,7 +7,7 @@ import {
   cleanupExpiredTokens,
   revalidate,
   forceLogin,
-} from "../controllers/auth.controller.ts";
+} from "@/controllers/auth.controller.ts";
 
 const authRoutes = async (fastify: FastifyInstance) => {
   fastify.post<{

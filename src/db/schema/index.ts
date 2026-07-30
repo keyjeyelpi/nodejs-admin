@@ -1,18 +1,18 @@
 // Table schemas
-export { users } from "./users.schema.ts";
-export { userSettings } from "./user-settings.schema.ts";
-export { userTokens } from "./user-tokens.schema.ts";
-export { roles } from "./roles.schema.ts";
-export { permissions } from "./permissions.schema.ts";
-export { rolePermissions } from "./role-permissions.schema.ts";
-export { positions } from "./positions.schema.ts";
-export { positionRoles } from "./position-roles.schema.ts";
-export { userPositions } from "./user-positions.schema.ts";
-export { logs } from "./logs.schema.ts";
-export { teams } from "./teams.schema.ts";
-export { teamUsers } from "./team-users.schema.ts";
-export { departments } from "./departments.schema.ts";
-export { departmentUsers } from "./department-users.schema.ts";
+export { users } from "@/db/schema/users.schema.ts";
+export { userSettings } from "@/db/schema/user-settings.schema.ts";
+export { userTokens } from "@/db/schema/user-tokens.schema.ts";
+export { roles } from "@/db/schema/roles.schema.ts";
+export { permissions } from "@/db/schema/permissions.schema.ts";
+export { rolePermissions } from "@/db/schema/role-permissions.schema.ts";
+export { positions } from "@/db/schema/positions.schema.ts";
+export { positionRoles } from "@/db/schema/position-roles.schema.ts";
+export { userPositions } from "@/db/schema/user-positions.schema.ts";
+export { logs } from "@/db/schema/logs.schema.ts";
+export { teams } from "@/db/schema/teams.schema.ts";
+export { teamUsers } from "@/db/schema/team-users.schema.ts";
+export { departments } from "@/db/schema/departments.schema.ts";
+export { departmentUsers } from "@/db/schema/department-users.schema.ts";
 
 // Relations
 export {
@@ -29,4 +29,4 @@ export {
   teamUsersRelations,
   departmentsRelations,
   departmentUsersRelations,
-} from "./relations.schema.ts";
+} from "@/db/schema/relations.schema.ts";

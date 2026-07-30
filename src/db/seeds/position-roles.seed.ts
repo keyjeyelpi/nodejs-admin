@@ -1,5 +1,5 @@
-import { db } from "../index.ts";
-import { positions, roles, positionRoles } from "../schema/index.ts";
+import { db } from "@/db/index.ts";
+import { positions, roles, positionRoles } from "@/db/schema/index.ts";
 
 export async function seed() {
   console.log("Seeding position roles...");
@@ -33,7 +33,7 @@ export async function seed() {
   const techLead = positionsList.find((p) => p.name === "Technical Lead");
   const projectManager = positionsList.find((p) => p.name === "Project Manager");
 
-  const positionRolesData = [];
+  const positionRolesData: any[] = [];
 
   const assignRoles = (positionId: string, roleIds: string[]) => {
     for (const roleId of roleIds) {

@@ -1,5 +1,5 @@
 import type { FastifyRequest, FastifyReply } from "fastify";
-import type { ErrorResponse } from "../interfaces/error.interface.ts";
+import type { ErrorResponse } from "@/interfaces/error.interface.ts";
 
 export const error404 = (req: FastifyRequest, reply: FastifyReply) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} -> 404`);

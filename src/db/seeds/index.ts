@@ -17,11 +17,11 @@ async function runAllSeeds() {
   try {
     await seedRoles();
     await seedPermissions();
+    await seedPositions();
     await seedRolePermissions();
+    await seedPositionRoles();
     await seedUsers();
     await seedUserSettings();
-    await seedPositions();
-    await seedPositionRoles();
     await seedUserPositions();
     await seedTeams();
     await seedTeamUsers();

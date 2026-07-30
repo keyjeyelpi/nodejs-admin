@@ -1,6 +1,6 @@
 import { mysqlTable, varchar } from "drizzle-orm/mysql-core";
-import { positions } from "./positions.schema.ts";
-import { roles } from "./roles.schema.ts";
+import { positions } from "@/db/schema/positions.schema.ts";
+import { roles } from "@/db/schema/roles.schema.ts";
 
 export const positionRoles = mysqlTable("position_roles", {
   positionId: varchar("position_id", {

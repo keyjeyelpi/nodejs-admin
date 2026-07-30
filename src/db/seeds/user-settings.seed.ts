@@ -1,5 +1,5 @@
-import { db } from "../index.ts";
-import { users, userSettings } from "../schema/index.ts";
+import { db } from "@/db/index.ts";
+import { users, userSettings } from "@/db/schema/index.ts";
 
 export async function seed() {
   console.log("Seeding user settings...");

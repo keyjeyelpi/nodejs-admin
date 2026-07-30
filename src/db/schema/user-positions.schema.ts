@@ -1,6 +1,6 @@
 import { mysqlTable, varchar } from "drizzle-orm/mysql-core";
-import { users } from "./users.schema.ts";
-import { positions } from "./positions.schema.ts";
+import { users } from "@/db/schema/users.schema.ts";
+import { positions } from "@/db/schema/positions.schema.ts";
 
 export const userPositions = mysqlTable("user_positions", {
   userId: varchar("user_id", {

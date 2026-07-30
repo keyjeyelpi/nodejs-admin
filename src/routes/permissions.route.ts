@@ -1,12 +1,12 @@
 import type { FastifyInstance } from "fastify";
-import { authenticateJWT } from "../middleware/jwt.middleware.ts";
+import { authenticateJWT } from "@/middleware/jwt.middleware.ts";
 import {
   getListPermissions,
   getPermissionsById,
   createPermissions,
   updatePermissions,
   remove,
-} from "../controllers/permissions.controller.ts";
+} from "@/controllers/permissions.controller.ts";
 
 const permissionsRoutes = async (fastify: FastifyInstance) => {
   fastify.get("/", { preHandler: [authenticateJWT] }, getListPermissions);

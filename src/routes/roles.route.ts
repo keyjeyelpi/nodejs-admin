@@ -1,12 +1,12 @@
 import type { FastifyInstance } from "fastify";
-import { authenticateJWT } from "../middleware/jwt.middleware.ts";
+import { authenticateJWT } from "@/middleware/jwt.middleware.ts";
 import {
   getListRoles,
   getRoles,
   createRoles,
   updateRoles,
   remove,
-} from "../controllers/roles.controller.ts";
+} from "@/controllers/roles.controller.ts";
 
 const rolesRoutes = async (fastify: FastifyInstance) => {
   fastify.get("/", { preHandler: [authenticateJWT] }, getListRoles);

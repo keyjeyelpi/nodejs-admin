@@ -1,5 +1,5 @@
-import { db } from "../index.ts";
-import { users, positions, userPositions } from "../schema/index.ts";
+import { db } from "@/db/index.ts";
+import { users, positions, userPositions } from "@/db/schema/index.ts";
 
 export async function seed() {
   console.log("Seeding user positions...");

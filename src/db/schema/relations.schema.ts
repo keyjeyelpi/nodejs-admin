@@ -1,17 +1,17 @@
 import { relations } from "drizzle-orm";
-import { users } from "./users.schema.ts";
-import { userSettings } from "./user-settings.schema.ts";
-import { userTokens } from "./user-tokens.schema.ts";
-import { roles } from "./roles.schema.ts";
-import { permissions } from "./permissions.schema.ts";
-import { rolePermissions } from "./role-permissions.schema.ts";
-import { positions } from "./positions.schema.ts";
-import { positionRoles } from "./position-roles.schema.ts";
-import { userPositions } from "./user-positions.schema.ts";
-import { teams } from "./teams.schema.ts";
-import { teamUsers } from "./team-users.schema.ts";
-import { departments } from "./departments.schema.ts";
-import { departmentUsers } from "./department-users.schema.ts";
+import { users } from "@/db/schema/users.schema.ts";
+import { userSettings } from "@/db/schema/user-settings.schema.ts";
+import { userTokens } from "@/db/schema/user-tokens.schema.ts";
+import { roles } from "@/db/schema/roles.schema.ts";
+import { permissions } from "@/db/schema/permissions.schema.ts";
+import { rolePermissions } from "@/db/schema/role-permissions.schema.ts";
+import { positions } from "@/db/schema/positions.schema.ts";
+import { positionRoles } from "@/db/schema/position-roles.schema.ts";
+import { userPositions } from "@/db/schema/user-positions.schema.ts";
+import { teams } from "@/db/schema/teams.schema.ts";
+import { teamUsers } from "@/db/schema/team-users.schema.ts";
+import { departments } from "@/db/schema/departments.schema.ts";
+import { departmentUsers } from "@/db/schema/department-users.schema.ts";
 
 export const usersRelations = relations(users, ({ one, many }) => ({
   settings: one(userSettings, {

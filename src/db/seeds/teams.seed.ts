@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
-import { db } from "../index.ts";
-import { teams, users } from "../schema/index.ts";
+import { db } from "@/db/index.ts";
+import { teams, users } from "@/db/schema/index.ts";
 
 export async function seed() {
   console.log("Seeding teams...");

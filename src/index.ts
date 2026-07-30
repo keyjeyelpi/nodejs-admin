@@ -1,7 +1,7 @@
 import cors from "@fastify/cors";
 import fastify from "fastify";
 import fastifyHelmet from "@fastify/helmet";
-import routes from "./routes/index.ts";
+import routes from "@/routes/index.ts";
 
 const app = fastify({
   logger: true,

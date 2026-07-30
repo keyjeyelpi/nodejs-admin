@@ -1,7 +1,7 @@
 import type { FastifyRequest, FastifyReply } from "fastify";
 import { sql, gte, lte, eq, and, desc, isNotNull } from "drizzle-orm";
-import { db } from "../db/index.ts";
-import { users } from "../db/schema/index.ts";
+import { db } from "@/db/index.ts";
+import { users } from "@/db/schema/index.ts";
 import countries, { type Countries, type Country } from "world-countries";
 
 // Helper function to get date ranges

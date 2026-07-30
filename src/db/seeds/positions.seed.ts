@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
-import { db } from "../index.ts";
-import { positions } from "../schema/index.ts";
+import { db } from "@/db/index.ts";
+import { positions } from "@/db/schema/index.ts";
 
 const POSITION_DATA: Array<{ name: string; description: string }> = [
   { name: "System Administrator", description: "Full system access and administration" },

@@ -3,11 +3,11 @@ import type { FastifyRequest, FastifyReply } from "fastify";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { eq, or, lt, sql, inArray, and, gt } from "drizzle-orm";
-import { db } from "../db/index.js";
-import { decrypt, encrypt } from "../utils/encryption.util.js";
-import { toCamelCase } from "../utils/case-converter.util.ts";
-import { logUserAction } from "../utils/logger.util.ts";
-import { getCurrentUTCTime } from "../utils/date.util.ts";
+import { db } from "@/db/index.js";
+import { decrypt, encrypt } from "@/utils/encryption.util.js";
+import { toCamelCase } from "@/utils/case-converter.util.ts";
+import { logUserAction } from "@/utils/logger.util.ts";
+import { getCurrentUTCTime } from "@/utils/date.util.ts";
 
 import {
   permissions,
@@ -18,8 +18,8 @@ import {
   users,
   userSettings,
   userTokens,
-} from "../db/schema/index.ts";
-import { userPositions } from "../db/schema/user-positions.schema.ts";
+} from "@/db/schema/index.ts";
+import { userPositions } from "@/db/schema/user-positions.schema.ts";
 
 const JWT_SECRET = process.env.JWT_SECRET || "";
 const EXPIRATION_IN_MINUTES = 15;
