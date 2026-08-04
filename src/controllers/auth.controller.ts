@@ -64,6 +64,7 @@ export const login = async (
         createdAt: users.createdAt,
         updatedAt: users.updatedAt,
         active: users.active,
+        lastLogin: users.lastLogin,
         settings: {
           colorPrimary: userSettings.colorPrimary,
           colorSecondary: userSettings.colorSecondary,
@@ -103,7 +104,10 @@ export const login = async (
 
     if (existingTokens > 0) {
       return reply.status(409).send({
-        message: "User is already logged in on another device. Please log out first.",
+        title: "Already Logged In",
+        description:
+          "User is already logged in on another device. Do you want to log in here instead?",
+        lastLogin: userResult.lastLogin,
       });
     }
 
