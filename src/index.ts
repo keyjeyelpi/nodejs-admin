@@ -1,6 +1,7 @@
 import cors from "@fastify/cors";
 import fastify from "fastify";
 import fastifyHelmet from "@fastify/helmet";
+import fastifyWebsocket from "@fastify/websocket";
 import routes from "@/routes/index.ts";
 
 const app = fastify({
@@ -18,6 +19,8 @@ async function start() {
 
     // Register Helmet
     await app.register(fastifyHelmet);
+    // Register WebSocket plugin
+    await app.register(fastifyWebsocket);
     // Register routes
     await app.register(routes);
 

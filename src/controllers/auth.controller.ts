@@ -8,6 +8,7 @@ import { decrypt, encrypt } from "@/utils/encryption.util.js";
 import { toCamelCase } from "@/utils/case-converter.util.ts";
 import { logUserAction } from "@/utils/logger.util.ts";
 import { getCurrentUTCTime } from "@/utils/date.util.ts";
+import { notifyUserForceLogout } from "@/controllers/ws.controller.ts";
 
 import {
   permissions,
@@ -193,6 +194,9 @@ export const forceLogin = async (
       .where(
         and(eq(userTokens.userID, userResult.id), gt(userTokens.expiration, getCurrentUTCTime()))
       );
+
+    // Actively notify the old device's WebSocket connections that they were logged out
+    notifyUserForceLogout(userResult.id);
 
     await createSessionAndRespond(userResult, req, reply, "forceLogin");
   } catch (err) {
