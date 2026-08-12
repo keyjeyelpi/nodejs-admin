@@ -7,6 +7,7 @@ import permissionsRoutes from "@/routes/permissions.route.ts";
 import usersRoutes from "@/routes/users.route.ts";
 import userSettingsRoutes from "@/routes/user-settings.route.ts";
 import wsRoutes from "@/routes/ws.route.ts";
+import organizationRoutes from "@/routes/organization.route.ts";
 import { error404, globalErrorHandler } from "@/controllers/index.ts";
 
 const routes = async (fastify: FastifyInstance) => {
@@ -33,6 +34,9 @@ const routes = async (fastify: FastifyInstance) => {
   });
   fastify.register(wsRoutes, {
     prefix: "/web-socket",
+  });
+  fastify.register(organizationRoutes, {
+    prefix: "/organization",
   });
 
   // 404 handler
